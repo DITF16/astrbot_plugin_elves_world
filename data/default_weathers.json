@@ -1,0 +1,81 @@
+{
+  "clear": {
+    "id": "clear",
+    "name": "晴朗",
+    "icon": "☀️",
+    "description": "天气晴朗，无特殊效果。",
+    "effects": {},
+    "dot_damage": 0,
+    "dot_immune_types": []
+  },
+  "rain": {
+    "id": "rain",
+    "name": "雨天",
+    "icon": "🌧️",
+    "description": "大雨倾盆，水系技能+30%，火系技能-30%。",
+    "effects": {
+      "water": { "power_mod": 1.3 },
+      "fire": { "power_mod": 0.7 }
+    },
+    "dot_damage": 0,
+    "dot_immune_types": []
+  },
+  "sunny": {
+    "id": "sunny",
+    "name": "烈日",
+    "icon": "🔆",
+    "description": "烈日当空，火系技能+30%，水系技能-30%。",
+    "effects": {
+      "fire": { "power_mod": 1.3 },
+      "water": { "power_mod": 0.7 }
+    },
+    "dot_damage": 0,
+    "dot_immune_types": []
+  },
+  "sandstorm": {
+    "id": "sandstorm",
+    "name": "沙暴",
+    "icon": "🏜️",
+    "description": "沙暴肆虐，非地系每回合损失6%HP，地系特防+30%。",
+    "effects": {
+      "ground": { "sp_defense_mod": 1.3 }
+    },
+    "dot_damage": 6,
+    "dot_immune_types": ["ground"]
+  },
+  "hail": {
+    "id": "hail",
+    "name": "冰雹",
+    "icon": "🌨️",
+    "description": "冰雹降落，非冰系每回合损失6%HP。",
+    "effects": {
+      "ice": { "defense_mod": 1.2 }
+    },
+    "dot_damage": 6,
+    "dot_immune_types": ["ice"]
+  },
+  "thunder_field": {
+    "id": "thunder_field",
+    "name": "雷电场",
+    "icon": "⚡",
+    "description": "电场覆盖，雷系技能+30%，所有精灵无法入睡。",
+    "effects": {
+      "electric": { "power_mod": 1.3 }
+    },
+    "prevent_status": ["sleep"],
+    "dot_damage": 0,
+    "dot_immune_types": []
+  },
+  "dark_fog": {
+    "id": "dark_fog",
+    "name": "黑雾",
+    "icon": "🌫️",
+    "description": "黑雾弥漫，所有技能命中率-20%，暗系技能+20%。",
+    "effects": {
+      "dark": { "power_mod": 1.2 },
+      "_global": { "accuracy_mod": 0.8 }
+    },
+    "dot_damage": 0,
+    "dot_immune_types": []
+  }
+}

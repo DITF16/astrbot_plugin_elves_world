@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>精灵对战游戏 - 管理后台</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body>
+    <!-- 登录页面 -->
+    <div id="login-page" class="page">
+        <div class="login-container">
+            <h1>🎮 精灵对战游戏</h1>
+            <h2>管理后台</h2>
+            <form id="login-form">
+                <input type="password" id="password" placeholder="请输入管理密码" required>
+                <button type="submit">登 录</button>
+            </form>
+            <p id="login-error" class="error"></p>
+        </div>
+    </div>
+
+    <!-- 主页面 -->
+    <div id="main-page" class="page hidden">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="logo">
+                <h2>🎮 精灵管理</h2>
+            </div>
+            <nav>
+                <a href="#" class="nav-item active" data-page="dashboard">📊 仪表盘</a>
+                <a href="#" class="nav-item" data-page="monsters">🐾 精灵管理</a>
+                <a href="#" class="nav-item" data-page="skills">⚔️ 技能管理</a>
+                <a href="#" class="nav-item" data-page="regions">🗺️ 区域管理</a>
+                <a href="#" class="nav-item" data-page="bosses">👹 BOSS管理</a>
+                <a href="#" class="nav-item" data-page="players">👥 玩家管理</a>
+                <div class="nav-divider"></div>
+                <a href="#" class="nav-item" data-page="types">🔮 属性配置</a>
+                <a href="#" class="nav-item" data-page="settings">⚙️ 系统设置</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="btn-logout">退出登录</button>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 顶部栏 -->
+            <header class="topbar">
+                <h1 id="page-title">仪表盘</h1>
+                <div class="topbar-actions">
+                    <button id="reload-config-btn" class="btn btn-secondary">🔄 重载配置</button>
+                </div>
+            </header>
+
+            <!-- 内容区域 -->
+            <div class="content-area">
+
+                <!-- 仪表盘 -->
+                <section id="dashboard-section" class="section">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-players">0</span>
+                                <span class="stat-label">注册玩家</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🐾</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-monsters">0</span>
+                                <span class="stat-label">精灵总数</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">⚔️</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-battles">0</span>
+                                <span class="stat-label">战斗次数</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📦</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-templates">0</span>
+                                <span class="stat-label">精灵模板</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-cards">
+                        <div class="info-card">
+                            <h3>📋 配置统计</h3>
+                            <ul>
+                                <li>技能数量: <span id="info-skills">0</span></li>
+                                <li>区域数量: <span id="info-regions">0</span></li>
+                                <li>BOSS数量: <span id="info-bosses">0</span></li>
+                            </ul>
+                        </div>
+                        <div class="info-card">
+                            <h3>🖥️ 服务器状态</h3>
+                            <ul>
+                                <li>状态: <span class="status-online">运行中</span></li>
+                                <li>版本: 1.0.0</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 精灵管理 -->
+                <section id="monsters-section" class="section hidden">
+                    <div class="section-header">
+                        <h2>精灵模板管理</h2>
+                        <button class="btn btn-primary" onclick="showMonsterModal()">+ 添加精灵</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>属性</th>
+                                    <th>稀有度</th>
+                                    <th>基础属性</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monsters-table-body">
+                                <!-- 动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 技能管理 -->
+                <section id="skills-section" class="section hidden">
+                    <div class="section-header">
+                        <h2>技能管理</h2>
+                        <button class="btn btn-primary" onclick="showSkillModal()">+ 添加技能</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>属性</th>
+                                    <th>类型</th>
+                                    <th>威力</th>
+                                    <th>命中</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="skills-table-body">
+                                <!-- 动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 区域管理 -->
+                <section id="regions-section" class="section hidden">
+                    <div class="section-header">
+                        <h2>区域管理</h2>
+                        <button class="btn btn-primary" onclick="showRegionModal()">+ 添加区域</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>等级范围</th>
+                                    <th>体力消耗</th>
+                                    <th>野生精灵</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="regions-table-body">
+                                <!-- 动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- BOSS管理 -->
+                <section id="bosses-section" class="section hidden">
+                    <div class="section-header">
+                        <h2>BOSS管理</h2>
+                        <button class="btn btn-primary" onclick="showBossModal()">+ 添加BOSS</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>等级</th>
+                                    <th>属性</th>
+                                    <th>所在区域</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bosses-table-body">
+                                <!-- 动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 玩家管理 -->
+                <section id="players-section" class="section hidden">
+                    <div class="section-header">
+                        <h2>玩家管理</h2>
+                        <div class="search-box">
+                            <input type="text" id="player-search" placeholder="搜索玩家ID或名称...">
+                            <button class="btn btn-secondary" onclick="searchPlayers()">搜索</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>等级</th>
+                                    <th>金币</th>
+                                    <th>精灵数</th>
+                                    <th>胜场</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="players-table-body">
+                                <!-- 动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="players-pagination">
+                        <!-- 分页 -->
+                    </div>
+                </section>
+
+                <!-- 属性配置 -->
+                <section id="types-section" class="section hidden">
+                    <div class="section-header">
+                        <h2>属性克制表</h2>
+                    </div>
+                    <div class="types-grid" id="types-grid">
+                        <!-- 动态填充 -->
+                    </div>
+                </section>
+
+                <!-- 系统设置 -->
+                <section id="settings-section" class="section hidden">
+                    <div class="section-header">
+                        <h2>系统设置</h2>
+                    </div>
+                    <div class="settings-form">
+                        <div class="settings-group">
+                            <h3>📦 数据管理</h3>
+                            <button class="btn btn-secondary" onclick="reloadConfig()">🔄 重载配置</button>
+                            <button class="btn btn-secondary" onclick="backupConfig()">💾 备份配置</button>
+                        </div>
+                        <div class="settings-group">
+                            <h3>⚠️ 危险操作</h3>
+                            <p class="warning-text">以下操作不可恢复，请谨慎使用！</p>
+                            <button class="btn btn-danger" onclick="confirmResetAll()">🗑️ 重置所有数据</button>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- 通用模态框 -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">标题</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- 动态内容 -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" id="modal-confirm-btn">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-message"></span>
+    </div>
+
+    <script src="../static/js/admin.js"></script>
+</body>
+</html>

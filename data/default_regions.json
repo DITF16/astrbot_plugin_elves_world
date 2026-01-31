@@ -1,0 +1,79 @@
+{
+  "新手森林": {
+    "name": "新手森林",
+    "description": "适合初学者探索的宁静森林，野生精灵温和友善。",
+    "level_range": [1, 10],
+    "stamina_cost": 10,
+    "map_size": "medium",
+    "unlock_requires": null,
+    "wild_monsters": [
+      {"name": "青叶狐", "weight": 30},
+      {"name": "冰晶兔", "weight": 25},
+      {"name": "烈焰龙", "weight": 15},
+      {"name": "水灵精", "weight": 20},
+      {"name": "雷霆狼", "weight": 10}
+    ],
+    "events": ["treasure_chest", "healing_spring"],
+    "boss": "森林守护者"
+  },
+  "烈焰火山": {
+    "name": "烈焰火山",
+    "description": "炽热的活火山，生活着强大的火系精灵。",
+    "level_range": [15, 30],
+    "stamina_cost": 20,
+    "map_size": "large",
+    "unlock_requires": {"type": "boss", "id": "森林守护者"},
+    "wild_monsters": [
+      {"name": "烈焰龙", "weight": 40},
+      {"name": "炎魔龙", "weight": 10},
+      {"name": "岩石巨人", "weight": 30}
+    ],
+    "events": ["treasure_chest", "lava_trap"],
+    "boss": "炎龙之王"
+  },
+  "深海秘境": {
+    "name": "深海秘境",
+    "description": "深邃的海底世界，隐藏着神秘的水系精灵。",
+    "level_range": [20, 40],
+    "stamina_cost": 25,
+    "map_size": "large",
+    "unlock_requires": {"type": "boss", "id": "炎龙之王"},
+    "wild_monsters": [
+      {"name": "水灵精", "weight": 35},
+      {"name": "海皇龙", "weight": 15},
+      {"name": "冰晶兔", "weight": 25}
+    ],
+    "events": ["treasure_chest", "whirlpool"],
+    "boss": "深海霸主"
+  },
+  "雷霆平原": {
+    "name": "雷霆平原",
+    "description": "常年雷暴的平原，电系精灵的乐园。",
+    "level_range": [25, 45],
+    "stamina_cost": 25,
+    "map_size": "medium",
+    "unlock_requires": {"type": "level", "value": 20},
+    "wild_monsters": [
+      {"name": "雷霆狼", "weight": 40},
+      {"name": "雷神狼王", "weight": 15},
+      {"name": "光明鸟", "weight": 10}
+    ],
+    "events": ["treasure_chest", "lightning_strike"],
+    "boss": "雷神"
+  },
+  "暗影深渊": {
+    "name": "暗影深渊",
+    "description": "永夜笼罩的深渊，最强大的暗属性精灵栖息于此。",
+    "level_range": [40, 60],
+    "stamina_cost": 35,
+    "map_size": "huge",
+    "unlock_requires": {"type": "boss", "id": "雷神"},
+    "wild_monsters": [
+      {"name": "暗影魔", "weight": 40},
+      {"name": "炎魔龙", "weight": 20},
+      {"name": "光明鸟", "weight": 15}
+    ],
+    "events": ["treasure_chest", "dark_trap", "rare_monster"],
+    "boss": "深渊领主"
+  }
+}

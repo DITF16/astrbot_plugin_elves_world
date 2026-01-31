@@ -1,0 +1,74 @@
+{
+  "fire": {
+    "id": "fire",
+    "name": "火",
+    "icon": "🔥",
+    "color": "#FF6B35",
+    "strong_against": ["grass", "ice"],
+    "weak_against": ["water", "ground"],
+    "description": "炽热的火焰属性"
+  },
+  "water": {
+    "id": "water",
+    "name": "水",
+    "icon": "💧",
+    "color": "#4A90D9",
+    "strong_against": ["fire", "ground"],
+    "weak_against": ["grass", "electric"],
+    "description": "流动的水属性"
+  },
+  "grass": {
+    "id": "grass",
+    "name": "草",
+    "icon": "🌿",
+    "color": "#7CB342",
+    "strong_against": ["water", "ground"],
+    "weak_against": ["fire", "ice"],
+    "description": "生机勃勃的草属性"
+  },
+  "electric": {
+    "id": "electric",
+    "name": "雷",
+    "icon": "⚡",
+    "color": "#FFD700",
+    "strong_against": ["water"],
+    "weak_against": ["ground"],
+    "description": "雷电交加的雷属性"
+  },
+  "ice": {
+    "id": "ice",
+    "name": "冰",
+    "icon": "❄️",
+    "color": "#81D4FA",
+    "strong_against": ["grass"],
+    "weak_against": ["fire"],
+    "description": "寒冷刺骨的冰属性"
+  },
+  "ground": {
+    "id": "ground",
+    "name": "地",
+    "icon": "🌍",
+    "color": "#A1887F",
+    "strong_against": ["fire", "electric"],
+    "weak_against": ["water", "grass"],
+    "description": "厚重的大地属性"
+  },
+  "light": {
+    "id": "light",
+    "name": "光",
+    "icon": "💫",
+    "color": "#FFF59D",
+    "strong_against": ["dark"],
+    "weak_against": ["dark"],
+    "description": "神圣的光明属性"
+  },
+  "dark": {
+    "id": "dark",
+    "name": "暗",
+    "icon": "🌑",
+    "color": "#424242",
+    "strong_against": ["light"],
+    "weak_against": ["light"],
+    "description": "深邃的黑暗属性"
+  }
+}

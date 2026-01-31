@@ -1,0 +1,283 @@
+{
+  "撞击": {
+    "name": "撞击",
+    "description": "用身体撞向对手的基础攻击",
+    "type": "normal",
+    "category": "physical",
+    "power": 40,
+    "accuracy": 100,
+    "effects": []
+  },
+  "电光一闪": {
+    "name": "电光一闪",
+    "description": "以极快速度冲撞对手，必定先制",
+    "type": "normal",
+    "category": "physical",
+    "power": 40,
+    "accuracy": 100,
+    "priority": 1,
+    "effects": []
+  },
+  "火球术": {
+    "name": "火球术",
+    "description": "发射炽热的火球攻击对手",
+    "type": "fire",
+    "category": "special",
+    "power": 45,
+    "accuracy": 100,
+    "effects": [{"type": "burn", "chance": 10}]
+  },
+  "烈焰爪": {
+    "name": "烈焰爪",
+    "description": "用燃烧的爪子撕裂对手",
+    "type": "fire",
+    "category": "physical",
+    "power": 55,
+    "accuracy": 100,
+    "effects": [{"type": "burn", "chance": 10}]
+  },
+  "火焰吐息": {
+    "name": "火焰吐息",
+    "description": "喷出灼热的火焰气息",
+    "type": "fire",
+    "category": "special",
+    "power": 65,
+    "accuracy": 95,
+    "effects": [{"type": "burn", "chance": 20}]
+  },
+  "喷射火焰": {
+    "name": "喷射火焰",
+    "description": "喷出猛烈的火焰攻击对手",
+    "type": "fire",
+    "category": "special",
+    "power": 90,
+    "accuracy": 100,
+    "effects": [{"type": "burn", "chance": 10}]
+  },
+  "水枪": {
+    "name": "水枪",
+    "description": "喷射水流攻击对手",
+    "type": "water",
+    "category": "special",
+    "power": 40,
+    "accuracy": 100,
+    "effects": []
+  },
+  "泡沫": {
+    "name": "泡沫",
+    "description": "喷出大量泡沫攻击，可能降低速度",
+    "type": "water",
+    "category": "special",
+    "power": 40,
+    "accuracy": 100,
+    "effects": [{"type": "stat", "stat": "speed", "stages": -1, "chance": 10}]
+  },
+  "水流环": {
+    "name": "水流环",
+    "description": "用水环包裹自己，每回合恢复HP",
+    "type": "water",
+    "category": "status",
+    "power": 0,
+    "accuracy": 100,
+    "effects": [{"type": "regen", "value": 6, "target": "self"}]
+  },
+  "冲浪": {
+    "name": "冲浪",
+    "description": "掀起巨浪攻击周围所有目标",
+    "type": "water",
+    "category": "special",
+    "power": 90,
+    "accuracy": 100,
+    "effects": []
+  },
+  "藤鞭": {
+    "name": "藤鞭",
+    "description": "用藤蔓抽打对手",
+    "type": "grass",
+    "category": "physical",
+    "power": 45,
+    "accuracy": 100,
+    "effects": []
+  },
+  "飞叶快刀": {
+    "name": "飞叶快刀",
+    "description": "飞出锋利的叶片切割对手，容易击中要害",
+    "type": "grass",
+    "category": "physical",
+    "power": 55,
+    "accuracy": 95,
+    "effects": [{"type": "critical", "bonus": 1}]
+  },
+  "寄生种子": {
+    "name": "寄生种子",
+    "description": "在对手身上种下种子，每回合吸取HP",
+    "type": "grass",
+    "category": "status",
+    "power": 0,
+    "accuracy": 90,
+    "effects": [{"type": "leech_seed"}]
+  },
+  "光合作用": {
+    "name": "光合作用",
+    "description": "利用阳光恢复HP",
+    "type": "grass",
+    "category": "status",
+    "power": 0,
+    "accuracy": 100,
+    "effects": [{"type": "heal", "value": 50, "target": "self"}]
+  },
+  "电击": {
+    "name": "电击",
+    "description": "释放电流攻击对手，可能造成麻痹",
+    "type": "electric",
+    "category": "special",
+    "power": 40,
+    "accuracy": 100,
+    "effects": [{"type": "paralysis", "chance": 10}]
+  },
+  "电光": {
+    "name": "电光",
+    "description": "用电流冲撞对手，可能造成麻痹",
+    "type": "electric",
+    "category": "physical",
+    "power": 65,
+    "accuracy": 100,
+    "effects": [{"type": "paralysis", "chance": 30}]
+  },
+  "十万伏特": {
+    "name": "十万伏特",
+    "description": "释放强力电击攻击对手",
+    "type": "electric",
+    "category": "special",
+    "power": 90,
+    "accuracy": 100,
+    "effects": [{"type": "paralysis", "chance": 10}]
+  },
+  "电磁波": {
+    "name": "电磁波",
+    "description": "发射电磁波使对手麻痹",
+    "type": "electric",
+    "category": "status",
+    "power": 0,
+    "accuracy": 90,
+    "effects": [{"type": "paralysis", "chance": 100}]
+  },
+  "冰冻光束": {
+    "name": "冰冻光束",
+    "description": "发射冰冻光线攻击，可能冻结对手",
+    "type": "ice",
+    "category": "special",
+    "power": 90,
+    "accuracy": 100,
+    "effects": [{"type": "freeze", "chance": 10}]
+  },
+  "暴风雪": {
+    "name": "暴风雪",
+    "description": "召唤暴风雪攻击，可能冻结对手",
+    "type": "ice",
+    "category": "special",
+    "power": 110,
+    "accuracy": 70,
+    "effects": [{"type": "freeze", "chance": 10}]
+  },
+  "冰冻拳": {
+    "name": "冰冻拳",
+    "description": "用冰冻的拳头击打对手",
+    "type": "ice",
+    "category": "physical",
+    "power": 75,
+    "accuracy": 100,
+    "effects": [{"type": "freeze", "chance": 10}]
+  },
+  "地震": {
+    "name": "地震",
+    "description": "引发地震攻击周围所有目标",
+    "type": "ground",
+    "category": "physical",
+    "power": 100,
+    "accuracy": 100,
+    "effects": []
+  },
+  "泥巴射击": {
+    "name": "泥巴射击",
+    "description": "向对手投掷泥巴，降低命中率",
+    "type": "ground",
+    "category": "special",
+    "power": 55,
+    "accuracy": 95,
+    "effects": [{"type": "stat", "stat": "accuracy", "stages": -1, "chance": 100}]
+  },
+  "光之壁": {
+    "name": "光之壁",
+    "description": "展开光之屏障，提升特防",
+    "type": "light",
+    "category": "status",
+    "power": 0,
+    "accuracy": 100,
+    "effects": [{"type": "stat", "stat": "sp_defense", "stages": 2, "target": "self"}]
+  },
+  "圣光术": {
+    "name": "圣光术",
+    "description": "释放圣洁光芒攻击黑暗属性有加成",
+    "type": "light",
+    "category": "special",
+    "power": 80,
+    "accuracy": 100,
+    "effects": []
+  },
+  "暗影球": {
+    "name": "暗影球",
+    "description": "投掷暗影能量球攻击，可能降低特防",
+    "type": "dark",
+    "category": "special",
+    "power": 80,
+    "accuracy": 100,
+    "effects": [{"type": "stat", "stat": "sp_defense", "stages": -1, "chance": 20}]
+  },
+  "暗黑火焰": {
+    "name": "暗黑火焰",
+    "description": "释放被黑暗侵蚀的火焰",
+    "type": "dark",
+    "category": "special",
+    "power": 85,
+    "accuracy": 100,
+    "effects": [{"type": "burn", "chance": 20}]
+  },
+  "恶意追击": {
+    "name": "恶意追击",
+    "description": "追击逃跑的对手，威力翻倍",
+    "type": "dark",
+    "category": "physical",
+    "power": 40,
+    "accuracy": 100,
+    "effects": []
+  },
+  "守护": {
+    "name": "守护",
+    "description": "进入防御姿态，本回合免疫所有伤害",
+    "type": "normal",
+    "category": "status",
+    "power": 0,
+    "accuracy": 100,
+    "priority": 4,
+    "effects": [{"type": "protect"}]
+  },
+  "剑舞": {
+    "name": "剑舞",
+    "description": "激烈的舞蹈，大幅提升攻击力",
+    "type": "normal",
+    "category": "status",
+    "power": 0,
+    "accuracy": 100,
+    "effects": [{"type": "stat", "stat": "attack", "stages": 2, "target": "self"}]
+  },
+  "高速移动": {
+    "name": "高速移动",
+    "description": "放松身体提高速度",
+    "type": "normal",
+    "category": "status",
+    "power": 0,
+    "accuracy": 100,
+    "effects": [{"type": "stat", "stat": "speed", "stages": 2, "target": "self"}]
+  }
+}

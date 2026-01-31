@@ -1,0 +1,219 @@
+{
+  "game_settings": {
+    "description": "游戏基础设置",
+    "type": "object",
+    "items": {
+      "stamina_recovery_minutes": {
+        "description": "体力恢复间隔（分钟）",
+        "type": "int",
+        "default": 5,
+        "hint": "每隔多少分钟恢复1点体力，建议3-10分钟"
+      },
+      "max_stamina": {
+        "description": "最大体力值",
+        "type": "int",
+        "default": 100,
+        "hint": "玩家体力上限"
+      },
+      "max_team_size": {
+        "description": "队伍上限",
+        "type": "int",
+        "default": 6,
+        "hint": "队伍中最多可携带的精灵数量"
+      },
+      "max_monster_capacity": {
+        "description": "背包上限",
+        "type": "int",
+        "default": 100,
+        "hint": "玩家最多可拥有的精灵数量"
+      },
+      "heal_cost": {
+        "description": "治疗费用（金币）",
+        "type": "int",
+        "default": 100,
+        "hint": "治疗所有精灵需要消耗的金币"
+      },
+      "battle_stamina_cost": {
+        "description": "战斗体力消耗",
+        "type": "int",
+        "default": 5,
+        "hint": "进行一次快速战斗消耗的体力"
+      }
+    }
+  },
+  "daily_reward": {
+    "description": "每日签到奖励设置",
+    "type": "object",
+    "items": {
+      "enabled": {
+        "description": "启用签到功能",
+        "type": "bool",
+        "default": true
+      },
+      "coins_min": {
+        "description": "金币奖励下限",
+        "type": "int",
+        "default": 100
+      },
+      "coins_max": {
+        "description": "金币奖励上限",
+        "type": "int",
+        "default": 300
+      },
+      "exp_min": {
+        "description": "经验奖励下限",
+        "type": "int",
+        "default": 20
+      },
+      "exp_max": {
+        "description": "经验奖励上限",
+        "type": "int",
+        "default": 50
+      },
+      "stamina_reward": {
+        "description": "体力奖励",
+        "type": "int",
+        "default": 30
+      }
+    }
+  },
+  "battle_settings": {
+    "description": "战斗相关设置",
+    "type": "object",
+    "items": {
+      "battle_timeout": {
+        "description": "战斗超时时间（秒）",
+        "type": "int",
+        "default": 180,
+        "hint": "战斗中多久不操作自动退出，建议60-300秒"
+      },
+      "explore_timeout": {
+        "description": "探索超时时间（秒）",
+        "type": "int",
+        "default": 300,
+        "hint": "探索中多久不操作自动退出，建议120-600秒"
+      },
+      "exp_multiplier": {
+        "description": "经验倍率",
+        "type": "float",
+        "default": 1.0,
+        "hint": "战斗获得经验的倍率，1.0为标准，2.0为双倍"
+      },
+      "coin_multiplier": {
+        "description": "金币倍率",
+        "type": "float",
+        "default": 1.0,
+        "hint": "战斗获得金币的倍率"
+      },
+      "catch_rate_multiplier": {
+        "description": "捕捉率倍率",
+        "type": "float",
+        "default": 1.0,
+        "hint": "捕捉成功率的倍率，1.0为标准，2.0为双倍成功率"
+      }
+    }
+  },
+  "map_settings": {
+    "description": "探索地图设置",
+    "type": "object",
+    "items": {
+      "default_map_size": {
+        "description": "默认地图尺寸",
+        "type": "string",
+        "default": "medium",
+        "options": ["small", "medium", "large", "huge"],
+        "hint": "small=4x4, medium=5x5, large=6x6, huge=8x8"
+      },
+      "fog_of_war": {
+        "description": "启用战争迷雾",
+        "type": "bool",
+        "default": true,
+        "hint": "是否启用探索迷雾效果，关闭后可看到所有格子"
+      },
+      "monster_encounter_rate": {
+        "description": "精灵遭遇率（%）",
+        "type": "int",
+        "default": 30,
+        "hint": "探索时遇到野生精灵的概率，0-100"
+      },
+      "treasure_rate": {
+        "description": "宝箱出现率（%）",
+        "type": "int",
+        "default": 15,
+        "hint": "探索时遇到宝箱的概率，0-100"
+      },
+      "rare_encounter_rate": {
+        "description": "稀有遭遇率（%）",
+        "type": "int",
+        "default": 5,
+        "hint": "遇到稀有精灵或稀有宝箱的概率，0-100"
+      }
+    }
+  },
+  "web_admin": {
+    "description": "Web管理后台设置",
+    "type": "object",
+    "hint": "可选功能，用于在浏览器中管理游戏数据",
+    "items": {
+      "enabled": {
+        "description": "启用Web后台",
+        "type": "bool",
+        "default": false
+      },
+      "host": {
+        "description": "监听地址",
+        "type": "string",
+        "default": "127.0.0.1",
+        "hint": "使用0.0.0.0可允许外部访问"
+      },
+      "port": {
+        "description": "监听端口",
+        "type": "int",
+        "default": 8765
+      },
+      "admin_password": {
+        "description": "管理员密码",
+        "type": "string",
+        "default": "admin123",
+        "hint": "访问Web后台需要的密码，请务必修改默认密码"
+      }
+    }
+  },
+  "command_prefix": {
+    "description": "指令前缀",
+    "type": "string",
+    "default": "精灵",
+    "hint": "游戏指令的触发前缀，如设为'pm'则使用/pm 背包",
+    "obvious_hint": true
+  },
+  "debug": {
+    "description": "调试设置",
+    "type": "object",
+    "items": {
+      "enabled": {
+        "description": "调试模式",
+        "type": "bool",
+        "default": false,
+        "hint": "启用后会在控制台输出更多日志信息"
+      },
+      "show_damage_details": {
+        "description": "显示伤害详情",
+        "type": "bool",
+        "default": false,
+        "hint": "战斗中显示详细的伤害计算过程"
+      },
+      "show_hidden_cells": {
+        "description": "显示隐藏格子",
+        "type": "bool",
+        "default": false,
+        "hint": "探索时显示所有格子内容（作弊模式）"
+      },
+      "auto_win": {
+        "description": "自动胜利",
+        "type": "bool",
+        "default": false,
+        "hint": "战斗时自动获胜（作弊模式）"
+      }
+    }
+  }
+}

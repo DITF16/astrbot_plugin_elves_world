@@ -1,0 +1,169 @@
+{
+  "精灵球": {
+    "name": "精灵球",
+    "description": "基础的精灵球，用于捕捉野生精灵",
+    "type": "capture",
+    "rarity": 1,
+    "price": 100,
+    "effect": {
+      "capture_rate": 1.0
+    }
+  },
+  "高级精灵球": {
+    "name": "高级精灵球",
+    "description": "性能更好的精灵球，捕捉成功率更高",
+    "type": "capture",
+    "rarity": 2,
+    "price": 300,
+    "effect": {
+      "capture_rate": 1.5
+    }
+  },
+  "大师球": {
+    "name": "大师球",
+    "description": "传说中的精灵球，必定捕捉成功",
+    "type": "capture",
+    "rarity": 5,
+    "price": 0,
+    "effect": {
+      "capture_rate": 999
+    }
+  },
+  "治疗药水": {
+    "name": "治疗药水",
+    "description": "恢复精灵30点HP",
+    "type": "heal",
+    "rarity": 1,
+    "price": 50,
+    "effect": {
+      "heal_hp": 30
+    }
+  },
+  "高级药水": {
+    "name": "高级药水",
+    "description": "恢复精灵80点HP",
+    "type": "heal",
+    "rarity": 2,
+    "price": 150,
+    "effect": {
+      "heal_hp": 80
+    }
+  },
+  "全满药水": {
+    "name": "全满药水",
+    "description": "完全恢复精灵的HP",
+    "type": "heal",
+    "rarity": 3,
+    "price": 500,
+    "effect": {
+      "heal_hp": 9999
+    }
+  },
+  "复活药": {
+    "name": "复活药",
+    "description": "复活濒死的精灵，恢复一半HP",
+    "type": "revive",
+    "rarity": 3,
+    "price": 400,
+    "effect": {
+      "revive": true,
+      "heal_percent": 50
+    }
+  },
+  "火之石": {
+    "name": "火之石",
+    "description": "蕴含火焰力量的神秘石头，可用于特殊进化",
+    "type": "evolution",
+    "rarity": 4,
+    "price": 2000,
+    "effect": {
+      "evolution_type": "fire"
+    }
+  },
+  "水之石": {
+    "name": "水之石",
+    "description": "蕴含水流力量的神秘石头，可用于特殊进化",
+    "type": "evolution",
+    "rarity": 4,
+    "price": 2000,
+    "effect": {
+      "evolution_type": "water"
+    }
+  },
+  "雷之石": {
+    "name": "雷之石",
+    "description": "蕴含雷电力量的神秘石头，可用于特殊进化",
+    "type": "evolution",
+    "rarity": 4,
+    "price": 2000,
+    "effect": {
+      "evolution_type": "electric"
+    }
+  },
+  "暗之石": {
+    "name": "暗之石",
+    "description": "蕴含黑暗力量的神秘石头，可用于特殊进化",
+    "type": "evolution",
+    "rarity": 4,
+    "price": 2000,
+    "effect": {
+      "evolution_type": "dark"
+    }
+  },
+  "神秘碎片": {
+    "name": "神秘碎片",
+    "description": "神秘的碎片，收集一定数量可兑换稀有物品",
+    "type": "material",
+    "rarity": 4,
+    "price": 0,
+    "effect": {}
+  },
+  "传说碎片": {
+    "name": "传说碎片",
+    "description": "传说级的碎片，收集一定数量可兑换传说精灵",
+    "type": "material",
+    "rarity": 5,
+    "price": 0,
+    "effect": {}
+  },
+  "体力药水": {
+    "name": "体力药水",
+    "description": "恢复30点体力",
+    "type": "stamina",
+    "rarity": 2,
+    "price": 100,
+    "effect": {
+      "restore_stamina": 30
+    }
+  },
+  "经验糖果S": {
+    "name": "经验糖果S",
+    "description": "给予精灵100点经验",
+    "type": "exp",
+    "rarity": 2,
+    "price": 200,
+    "effect": {
+      "give_exp": 100
+    }
+  },
+  "经验糖果M": {
+    "name": "经验糖果M",
+    "description": "给予精灵500点经验",
+    "type": "exp",
+    "rarity": 3,
+    "price": 800,
+    "effect": {
+      "give_exp": 500
+    }
+  },
+  "经验糖果L": {
+    "name": "经验糖果L",
+    "description": "给予精灵2000点经验",
+    "type": "exp",
+    "rarity": 4,
+    "price": 2500,
+    "effect": {
+      "give_exp": 2000
+    }
+  }
+}

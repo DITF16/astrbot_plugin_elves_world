@@ -1,0 +1,235 @@
+{
+  "烈焰龙": {
+    "name": "烈焰龙",
+    "description": "背负炽热火焰的幼龙，性格暴躁但忠诚。",
+    "types": ["fire"],
+    "rarity": 4,
+    "base_stats": {
+      "hp": 45,
+      "attack": 50,
+      "defense": 40,
+      "sp_attack": 55,
+      "sp_defense": 45,
+      "speed": 50
+    },
+    "skills": ["火球术", "烈焰爪", "火焰吐息"],
+    "learnable_skills": {
+      "15": "喷射火焰",
+      "25": "剑舞"
+    },
+    "evolution": {
+      "to": "炎魔龙",
+      "level": 30
+    }
+  },
+  "炎魔龙": {
+    "name": "炎魔龙",
+    "description": "烈焰龙的进化形态，拥有毁天灭地的力量。",
+    "types": ["fire", "dark"],
+    "rarity": 5,
+    "base_stats": {
+      "hp": 80,
+      "attack": 95,
+      "defense": 70,
+      "sp_attack": 100,
+      "sp_defense": 75,
+      "speed": 85
+    },
+    "skills": ["暗黑火焰", "喷射火焰", "地震", "剑舞"],
+    "learnable_skills": {},
+    "evolution": null
+  },
+  "水灵精": {
+    "name": "水灵精",
+    "description": "由纯净水源孕育而生的精灵，性格温柔。",
+    "types": ["water"],
+    "rarity": 3,
+    "base_stats": {
+      "hp": 50,
+      "attack": 35,
+      "defense": 45,
+      "sp_attack": 50,
+      "sp_defense": 50,
+      "speed": 40
+    },
+    "skills": ["水枪", "泡沫", "水流环"],
+    "learnable_skills": {
+      "18": "冲浪",
+      "22": "冰冻光束"
+    },
+    "evolution": {
+      "to": "海皇龙",
+      "level": 35
+    }
+  },
+  "海皇龙": {
+    "name": "海皇龙",
+    "description": "掌控海洋的霸主，传说能引发海啸。",
+    "types": ["water"],
+    "rarity": 5,
+    "base_stats": {
+      "hp": 95,
+      "attack": 70,
+      "defense": 80,
+      "sp_attack": 110,
+      "sp_defense": 90,
+      "speed": 75
+    },
+    "skills": ["冲浪", "冰冻光束", "暴风雪", "水流环"],
+    "learnable_skills": {},
+    "evolution": null
+  },
+  "青叶狐": {
+    "name": "青叶狐",
+    "description": "森林中的小精灵，擅长利用植物的力量。",
+    "types": ["grass"],
+    "rarity": 3,
+    "base_stats": {
+      "hp": 45,
+      "attack": 40,
+      "defense": 35,
+      "sp_attack": 50,
+      "sp_defense": 40,
+      "speed": 55
+    },
+    "skills": ["藤鞭", "电光一闪", "光合作用"],
+    "learnable_skills": {
+      "12": "飞叶快刀",
+      "20": "寄生种子"
+    },
+    "evolution": {
+      "to": "翠玉九尾",
+      "level": 28
+    }
+  },
+  "翠玉九尾": {
+    "name": "翠玉九尾",
+    "description": "森林的守护者，九条尾巴蕴含自然之力。",
+    "types": ["grass"],
+    "rarity": 5,
+    "base_stats": {
+      "hp": 75,
+      "attack": 70,
+      "defense": 65,
+      "sp_attack": 95,
+      "sp_defense": 80,
+      "speed": 100
+    },
+    "skills": ["飞叶快刀", "光合作用", "寄生种子", "圣光术"],
+    "learnable_skills": {},
+    "evolution": null
+  },
+  "雷霆狼": {
+    "name": "雷霆狼",
+    "description": "奔跑时身体会产生电流的狼型精灵。",
+    "types": ["electric"],
+    "rarity": 4,
+    "base_stats": {
+      "hp": 50,
+      "attack": 55,
+      "defense": 40,
+      "sp_attack": 55,
+      "sp_defense": 40,
+      "speed": 70
+    },
+    "skills": ["电击", "电光一闪", "电光"],
+    "learnable_skills": {
+      "16": "电磁波",
+      "24": "十万伏特"
+    },
+    "evolution": {
+      "to": "雷神狼王",
+      "level": 32
+    }
+  },
+  "雷神狼王": {
+    "name": "雷神狼王",
+    "description": "传说中的雷霆之王，怒吼能引发雷暴。",
+    "types": ["electric"],
+    "rarity": 5,
+    "base_stats": {
+      "hp": 80,
+      "attack": 90,
+      "defense": 65,
+      "sp_attack": 95,
+      "sp_defense": 70,
+      "speed": 115
+    },
+    "skills": ["十万伏特", "电光", "高速移动", "地震"],
+    "learnable_skills": {},
+    "evolution": null
+  },
+  "冰晶兔": {
+    "name": "冰晶兔",
+    "description": "生活在雪山的可爱精灵，毛发如水晶般闪耀。",
+    "types": ["ice"],
+    "rarity": 3,
+    "base_stats": {
+      "hp": 45,
+      "attack": 30,
+      "defense": 35,
+      "sp_attack": 55,
+      "sp_defense": 50,
+      "speed": 50
+    },
+    "skills": ["冰冻光束", "电光一闪", "守护"],
+    "learnable_skills": {
+      "15": "冰冻拳",
+      "25": "暴风雪"
+    },
+    "evolution": null
+  },
+  "岩石巨人": {
+    "name": "岩石巨人",
+    "description": "由岩石构成的巨人，防御力极高但速度缓慢。",
+    "types": ["ground"],
+    "rarity": 4,
+    "base_stats": {
+      "hp": 70,
+      "attack": 80,
+      "defense": 100,
+      "sp_attack": 30,
+      "sp_defense": 60,
+      "speed": 20
+    },
+    "skills": ["地震", "泥巴射击", "守护"],
+    "learnable_skills": {
+      "20": "剑舞"
+    },
+    "evolution": null
+  },
+  "光明鸟": {
+    "name": "光明鸟",
+    "description": "传说中的神鸟，浑身散发金色光芒。",
+    "types": ["light"],
+    "rarity": 5,
+    "base_stats": {
+      "hp": 85,
+      "attack": 70,
+      "defense": 75,
+      "sp_attack": 110,
+      "sp_defense": 95,
+      "speed": 90
+    },
+    "skills": ["圣光术", "光之壁", "高速移动", "冰冻光束"],
+    "learnable_skills": {},
+    "evolution": null
+  },
+  "暗影魔": {
+    "name": "暗影魔",
+    "description": "潜伏于黑暗中的神秘生物，以恐惧为食。",
+    "types": ["dark"],
+    "rarity": 5,
+    "base_stats": {
+      "hp": 75,
+      "attack": 85,
+      "defense": 60,
+      "sp_attack": 105,
+      "sp_defense": 80,
+      "speed": 100
+    },
+    "skills": ["暗影球", "恶意追击", "暗黑火焰", "高速移动"],
+    "learnable_skills": {},
+    "evolution": null
+  }
+}

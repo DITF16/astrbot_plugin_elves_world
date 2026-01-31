@@ -1,0 +1,92 @@
+{
+  "brave": {
+    "id": "brave",
+    "name": "勇敢",
+    "buff_stat": "attack",
+    "buff_percent": 10,
+    "debuff_stat": "speed",
+    "debuff_percent": 10,
+    "description": "攻击+10%, 速度-10%"
+  },
+  "timid": {
+    "id": "timid",
+    "name": "胆小",
+    "buff_stat": "speed",
+    "buff_percent": 10,
+    "debuff_stat": "attack",
+    "debuff_percent": 10,
+    "description": "速度+10%, 攻击-10%"
+  },
+  "modest": {
+    "id": "modest",
+    "name": "内敛",
+    "buff_stat": "sp_attack",
+    "buff_percent": 10,
+    "debuff_stat": "attack",
+    "debuff_percent": 10,
+    "description": "特攻+10%, 攻击-10%"
+  },
+  "adamant": {
+    "id": "adamant",
+    "name": "固执",
+    "buff_stat": "attack",
+    "buff_percent": 10,
+    "debuff_stat": "sp_attack",
+    "debuff_percent": 10,
+    "description": "攻击+10%, 特攻-10%"
+  },
+  "bold": {
+    "id": "bold",
+    "name": "大胆",
+    "buff_stat": "defense",
+    "buff_percent": 10,
+    "debuff_stat": "attack",
+    "debuff_percent": 10,
+    "description": "防御+10%, 攻击-10%"
+  },
+  "calm": {
+    "id": "calm",
+    "name": "温和",
+    "buff_stat": "sp_defense",
+    "buff_percent": 10,
+    "debuff_stat": "attack",
+    "debuff_percent": 10,
+    "description": "特防+10%, 攻击-10%"
+  },
+  "jolly": {
+    "id": "jolly",
+    "name": "爽朗",
+    "buff_stat": "speed",
+    "buff_percent": 10,
+    "debuff_stat": "sp_attack",
+    "debuff_percent": 10,
+    "description": "速度+10%, 特攻-10%"
+  },
+  "relaxed": {
+    "id": "relaxed",
+    "name": "悠闲",
+    "buff_stat": "defense",
+    "buff_percent": 10,
+    "debuff_stat": "speed",
+    "debuff_percent": 10,
+    "description": "防御+10%, 速度-10%"
+  },
+  "hardy": {
+    "id": "hardy",
+    "name": "勤奋",
+    "buff_stat": null,
+    "buff_percent": 0,
+    "debuff_stat": null,
+    "debuff_percent": 0,
+    "description": "性格平衡，无加成无减益"
+  },
+  "serious": {
+    "id": "serious",
+    "name": "认真",
+    "buff_stat": null,
+    "buff_percent": 0,
+    "debuff_stat": null,
+    "debuff_percent": 0,
+    "description": "性格平衡，无加成无减益"
+  }
+}
