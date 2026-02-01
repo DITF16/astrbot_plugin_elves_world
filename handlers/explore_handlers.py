@@ -187,15 +187,18 @@ class ExploreHandlers:
         )
 
         # 进入探索会话
-        async for _ in self._exploration_session(event, user_id, umo):
-            pass
+        async for resp in self._exploration_session(event, user_id, umo):
+            yield resp
 
     async def _exploration_session(self, event: AstrMessageEvent, user_id: str, umo: str):
         """探索会话"""
         CellType, EventType = self._get_imports()
+        # 用于存储待处理的战斗信息
+        pending_battle = None
 
         @session_waiter(timeout=self.plugin.explore_timeout, record_history_chains=False)
         async def explore_loop(controller: SessionController, ev: AstrMessageEvent):
+            nonlocal pending_battle
             msg = ev.message_str.strip()
 
             exp_map = self.wm.get_active_map(user_id)
@@ -262,17 +265,14 @@ class ExploreHandlers:
                 # 暂停探索会话，进入战斗
                 controller.stop()
 
-                # 触发战斗
-                if self.battle_handlers:
-                    await self.battle_handlers.start_battle_from_explore(
-                        event=ev,
-                        user_id=user_id,
-                        umo=umo,
-                        monster_data=result.monster_data,
-                        weather=exp_map.weather,
-                        is_boss=result.is_boss,
-                        boss_id=result.boss_id
-                    )
+                # ✅ 保存战斗信息，稍后在外部处理
+                pending_battle = {
+                    "event": ev,
+                    "monster_data": result.monster_data,
+                    "weather": exp_map.weather,
+                    "is_boss": result.is_boss,
+                    "boss_id": result.boss_id
+                }
                 return
 
             # 非战斗结果 - 处理奖励
@@ -322,7 +322,20 @@ class ExploreHandlers:
             self.wm.clear_active_map(user_id)
             yield event.plain_result("⏰ 探索超时，已自动退出")
         finally:
-            event.stop_event()
+            pass
+
+        # ✅ 在探索会话结束后，如果有待处理的战斗，进入战斗会话
+        if pending_battle and self.battle_handlers:
+            async for resp in self.battle_handlers.start_battle_from_explore(
+                    event=pending_battle["event"],
+                    user_id=user_id,
+                    umo=umo,
+                    monster_data=pending_battle["monster_data"],
+                    weather=pending_battle["weather"],
+                    is_boss=pending_battle["is_boss"],
+                    boss_id=pending_battle["boss_id"]
+            ):
+                yield resp
 
     async def cmd_map(self, event: AstrMessageEvent):
         """

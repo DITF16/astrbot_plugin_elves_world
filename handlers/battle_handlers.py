@@ -197,7 +197,7 @@ class BattleHandlers:
             )
 
         if not battle:
-            return None
+            return  # 改为 return，无需返回值
 
         self._active_battles[umo] = battle
 
@@ -207,19 +207,19 @@ class BattleHandlers:
 
         prefix = "👹 BOSS战！" if is_boss else "⚔️ 战斗开始！"
 
-        await event.send(event.plain_result(
+        # ✅ 使用 yield 让这个方法变成异步生成器
+        yield event.plain_result(
             f"{prefix}\n\n"
             f"{battle_text}\n\n"
             f"{skill_menu}\n\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"输入技能序号(1-4)攻击\n"
             f"输入「逃跑」逃离 | 输入「捕捉」捕捉"
-        ))
+        )
 
         # 进入战斗会话
-        await self._battle_session(event, user_id, umo)
-
-        return battle
+        async for resp in self._battle_session(event, user_id, umo):
+            yield resp
 
     async def _battle_session(self, event: AstrMessageEvent, user_id: str, umo: str):
         """战斗会话处理"""
