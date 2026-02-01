@@ -321,11 +321,10 @@ class ExploreHandlers:
         except TimeoutError:
             self.wm.clear_active_map(user_id)
             yield event.plain_result("⏰ 探索超时，已自动退出")
-        finally:
-            pass
 
-        # ✅ 在探索会话结束后，如果有待处理的战斗，进入战斗会话
-        if pending_battle and self.battle_handlers:
+        # ✅ 战斗 -> 继续探索的循环
+        while pending_battle and self.battle_handlers:
+            # 进入战斗
             async for resp in self.battle_handlers.start_battle_from_explore(
                     event=pending_battle["event"],
                     user_id=user_id,
@@ -336,6 +335,22 @@ class ExploreHandlers:
                     boss_id=pending_battle["boss_id"]
             ):
                 yield resp
+
+            # 战斗结束，清空待处理战斗
+            pending_battle = None
+
+            # 检查地图是否还存在（玩家可能已经被传送出去或者地图被清除）
+            exp_map = self.wm.get_active_map(user_id)
+            if not exp_map:
+                break  # 地图不存在了，退出循环
+
+            # 重新进入探索循环
+            try:
+                await explore_loop(event)
+            except TimeoutError:
+                self.wm.clear_active_map(user_id)
+                yield event.plain_result("⏰ 探索超时，已自动退出")
+                break
 
     async def cmd_map(self, event: AstrMessageEvent):
         """
