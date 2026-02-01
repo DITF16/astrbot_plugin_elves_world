@@ -35,6 +35,7 @@
                 <a href="#" class="nav-item" data-page="bosses">👹 BOSS管理</a>
                 <a href="#" class="nav-item" data-page="players">👥 玩家管理</a>
                 <div class="nav-divider"></div>
+                <a href="#" class="nav-item" data-page="natures">🎭 性格管理</a>
                 <a href="#" class="nav-item" data-page="types">🔮 属性配置</a>
                 <a href="#" class="nav-item" data-page="settings">⚙️ 系统设置</a>
             </nav>
@@ -240,6 +241,34 @@
                         <!-- 分页 -->
                     </div>
                 </section>
+
+                <!-- 性格管理 -->
+                <section id="natures-section" class="section hidden">
+                    <div class="section-header">
+                        <h2>性格管理</h2>
+                        <button class="btn btn-primary" onclick="showNatureModal()">+ 添加性格</button>
+                    </div>
+                    <p class="section-description">管理精灵的性格配置，包括属性加成、减益效果和生成权重。权重越高，该性格被随机到的概率越大。</p>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>属性加成</th>
+                                    <th>属性减益</th>
+                                    <th>权重</th>
+                                    <th>描述</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="natures-table-body">
+                                <!-- 动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
 
                 <!-- 属性配置 -->
                 <section id="types-section" class="section hidden">

@@ -102,11 +102,17 @@ class MonsterInstance:
         """
         从模板创建精灵实例
         """
-        # 随机性格
+        # 随机性格（支持权重）
         if nature_id is None:
             if config_manager:
-                natures = list(config_manager.natures.keys())
-                nature_id = random.choice(natures) if natures else "hardy"
+                natures_config = config_manager.natures
+                if natures_config:
+                    # 构建权重列表，按权重随机选择
+                    nature_ids = list(natures_config.keys())
+                    weights = [natures_config[n].get("weight", 10) for n in nature_ids]
+                    nature_id = random.choices(nature_ids, weights=weights, k=1)[0]
+                else:
+                    nature_id = "hardy"
             else:
                 nature_id = "hardy"
 

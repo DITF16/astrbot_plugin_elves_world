@@ -6,6 +6,7 @@
     "buff_percent": 10,
     "debuff_stat": "speed",
     "debuff_percent": 10,
+    "weight": 10,
     "description": "攻击+10%, 速度-10%"
   },
   "timid": {
@@ -15,6 +16,7 @@
     "buff_percent": 10,
     "debuff_stat": "attack",
     "debuff_percent": 10,
+    "weight": 10,
     "description": "速度+10%, 攻击-10%"
   },
   "modest": {
@@ -24,6 +26,7 @@
     "buff_percent": 10,
     "debuff_stat": "attack",
     "debuff_percent": 10,
+    "weight": 10,
     "description": "特攻+10%, 攻击-10%"
   },
   "adamant": {
@@ -33,6 +36,7 @@
     "buff_percent": 10,
     "debuff_stat": "sp_attack",
     "debuff_percent": 10,
+    "weight": 10,
     "description": "攻击+10%, 特攻-10%"
   },
   "bold": {
@@ -42,6 +46,7 @@
     "buff_percent": 10,
     "debuff_stat": "attack",
     "debuff_percent": 10,
+    "weight": 10,
     "description": "防御+10%, 攻击-10%"
   },
   "calm": {
@@ -51,6 +56,7 @@
     "buff_percent": 10,
     "debuff_stat": "attack",
     "debuff_percent": 10,
+    "weight": 10,
     "description": "特防+10%, 攻击-10%"
   },
   "jolly": {
@@ -60,6 +66,7 @@
     "buff_percent": 10,
     "debuff_stat": "sp_attack",
     "debuff_percent": 10,
+    "weight": 10,
     "description": "速度+10%, 特攻-10%"
   },
   "relaxed": {
@@ -69,6 +76,7 @@
     "buff_percent": 10,
     "debuff_stat": "speed",
     "debuff_percent": 10,
+    "weight": 10,
     "description": "防御+10%, 速度-10%"
   },
   "hardy": {
@@ -78,6 +86,7 @@
     "buff_percent": 0,
     "debuff_stat": null,
     "debuff_percent": 0,
+    "weight": 15,
     "description": "性格平衡，无加成无减益"
   },
   "serious": {
@@ -87,6 +96,8 @@
     "buff_percent": 0,
     "debuff_stat": null,
     "debuff_percent": 0,
+    "weight": 15,
     "description": "性格平衡，无加成无减益"
   }
 }
+

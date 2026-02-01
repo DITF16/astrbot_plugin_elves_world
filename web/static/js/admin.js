@@ -254,6 +254,7 @@ function switchPage(pageName) {
         regions: '区域管理',
         bosses: 'BOSS管理',
         players: '玩家管理',
+        natures: '性格管理',
         types: '属性配置',
         settings: '系统设置'
     };
@@ -286,6 +287,10 @@ function loadPageData(pageName) {
         case 'players':
             loadPlayers();
             break;
+        case 'natures':
+            loadNatures();
+            break;
+        
         case 'types':
             loadTypes();
             break;
@@ -1394,6 +1399,254 @@ async function giveToPlayer(userId) {
     }
 }
 
+// ==================== 性格管理 ====================
+
+/**
+ * 获取属性名称映射
+ */
+function getStatName(stat) {
+    const statNames = {
+        hp: '生命',
+        attack: '攻击',
+        defense: '防御',
+        sp_attack: '特攻',
+        sp_defense: '特防',
+        speed: '速度'
+    };
+    return statNames[stat] || stat || '无';
+}
+
+/**
+ * 获取属性选项HTML
+ */
+function getStatOptions(selected = '') {
+    const stats = [
+        { value: '', label: '无' },
+        { value: 'hp', label: '生命' },
+        { value: 'attack', label: '攻击' },
+        { value: 'defense', label: '防御' },
+        { value: 'sp_attack', label: '特攻' },
+        { value: 'sp_defense', label: '特防' },
+        { value: 'speed', label: '速度' }
+    ];
+    return stats.map(s => 
+        `<option value="${s.value}" ${s.value === selected ? 'selected' : ''}>${s.label}</option>`
+    ).join('');
+}
+
+async function loadNatures() {
+    try {
+        const result = await api('/natures');
+        if (result.success) {
+            renderNaturesTable(result.data);
+        }
+    } catch (error) {
+        showToast('加载性格列表失败', 'error');
+    }
+}
+
+function renderNaturesTable(natures) {
+    const tbody = document.getElementById('natures-table-body');
+
+    if (!natures || Object.keys(natures).length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="empty-state">
+                    <div class="empty-icon">🎭</div>
+                    <p>暂无性格数据</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    // 计算总权重用于显示概率
+    const totalWeight = Object.values(natures).reduce((sum, n) => sum + (n.weight || 10), 0);
+
+    tbody.innerHTML = Object.entries(natures).map(([key, n]) => {
+        const buffStr = n.buff_stat ? `${getStatName(n.buff_stat)} +${n.buff_percent || 10}%` : '-';
+        const debuffStr = n.debuff_stat ? `${getStatName(n.debuff_stat)} -${n.debuff_percent || 10}%` : '-';
+        const weight = n.weight || 10;
+        const probability = ((weight / totalWeight) * 100).toFixed(1);
+        
+        return `
+        <tr>
+            <td><code>${n.id || key}</code></td>
+            <td>${n.name}</td>
+            <td style="color: #22c55e;">${buffStr}</td>
+            <td style="color: #ef4444;">${debuffStr}</td>
+            <td><span class="weight-badge">${weight}</span> <small style="color:#888;">(${probability}%)</small></td>
+            <td>${n.description || '-'}</td>
+            <td class="table-actions">
+                <button class="btn btn-secondary btn-small" onclick="editNature('${n.id || key}')">编辑</button>
+                <button class="btn btn-danger btn-small" onclick="deleteNature('${n.id || key}')">删除</button>
+            </td>
+        </tr>
+    `}).join('');
+}
+
+function showNatureModal(natureId = null) {
+    const isEdit = !!natureId;
+    const title = isEdit ? '编辑性格' : '添加性格';
+
+    const content = `
+        <form id="nature-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>ID (英文标识) *</label>
+                    <input type="text" name="id" required ${isEdit ? 'readonly style="background:#f0f0f0;"' : ''} placeholder="如: brave, timid">
+                </div>
+                <div class="form-group">
+                    <label>名称 *</label>
+                    <input type="text" name="name" required placeholder="如: 勇敢, 胆小">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>增益属性</label>
+                    <select name="buff_stat">
+                        ${getStatOptions()}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>增益百分比</label>
+                    <input type="number" name="buff_percent" value="10" min="0" max="100">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>减益属性</label>
+                    <select name="debuff_stat">
+                        ${getStatOptions()}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>减益百分比</label>
+                    <input type="number" name="debuff_percent" value="10" min="0" max="100">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>生成权重</label>
+                    <input type="number" name="weight" value="10" min="1" max="100">
+                    <small style="color:#888;">权重越高，随机到的概率越大</small>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>描述</label>
+                <input type="text" name="description" placeholder="如: 攻击+10%, 速度-10%">
+            </div>
+        </form>
+    `;
+
+    showModal(title, content, async () => {
+        await saveNature(isEdit);
+    });
+
+    if (isEdit) {
+        loadNatureData(natureId);
+    }
+}
+
+async function loadNatureData(natureId) {
+    try {
+        const result = await api(`/natures/detail?id=${encodeURIComponent(natureId)}`);
+        if (result.success) {
+            const n = result.data;
+            const form = document.getElementById('nature-form');
+            form.querySelector('[name="id"]').value = n.id || natureId;
+            form.querySelector('[name="name"]').value = n.name || '';
+            form.querySelector('[name="buff_stat"]').value = n.buff_stat || '';
+            form.querySelector('[name="buff_percent"]').value = n.buff_percent || 10;
+            form.querySelector('[name="debuff_stat"]').value = n.debuff_stat || '';
+            form.querySelector('[name="debuff_percent"]').value = n.debuff_percent || 10;
+            form.querySelector('[name="weight"]').value = n.weight || 10;
+            form.querySelector('[name="description"]').value = n.description || '';
+            
+            // 保存原始ID
+            form.dataset.originalId = n.id || natureId;
+        }
+    } catch (error) {
+        showToast('加载性格数据失败', 'error');
+    }
+}
+
+async function saveNature(isEdit) {
+    const form = document.getElementById('nature-form');
+    const formData = new FormData(form);
+    const originalId = form.dataset.originalId;
+    const natureId = formData.get('id');
+    
+    // 构建数据，处理空值
+    const buffStat = formData.get('buff_stat');
+    const debuffStat = formData.get('debuff_stat');
+    
+    const data = {
+        id: natureId,
+        name: formData.get('name'),
+        buff_stat: buffStat || null,
+        buff_percent: buffStat ? parseInt(formData.get('buff_percent')) || 10 : 0,
+        debuff_stat: debuffStat || null,
+        debuff_percent: debuffStat ? parseInt(formData.get('debuff_percent')) || 10 : 0,
+        weight: parseInt(formData.get('weight')) || 10,
+        description: formData.get('description') || ''
+    };
+
+    // 自动生成描述（如果为空）
+    if (!data.description) {
+        const parts = [];
+        if (data.buff_stat) parts.push(`${getStatName(data.buff_stat)}+${data.buff_percent}%`);
+        if (data.debuff_stat) parts.push(`${getStatName(data.debuff_stat)}-${data.debuff_percent}%`);
+        data.description = parts.length > 0 ? parts.join(', ') : '性格平衡，无加成无减益';
+    }
+
+    try {
+        const endpoint = isEdit
+            ? `/natures/update?id=${encodeURIComponent(originalId)}`
+            : '/natures';
+        const method = isEdit ? 'PUT' : 'POST';
+        const result = await api(endpoint, {
+            method: method,
+            body: JSON.stringify(data)
+        });
+        if (result.success) {
+            closeModal();
+            showToast(isEdit ? '更新成功' : '创建成功', 'success');
+            loadNatures();
+        } else {
+            showToast(result.message || '保存失败', 'error');
+        }
+    } catch (error) {
+        showToast('保存失败', 'error');
+    }
+}
+
+function editNature(natureId) {
+    showNatureModal(natureId);
+}
+
+async function deleteNature(natureId) {
+    if (!confirm(`确定要删除性格 "${natureId}" 吗？\n\n注意：已有该性格的精灵不会受影响，但新生成的精灵将无法获得此性格。`)) {
+        return;
+    }
+    try {
+        const result = await api(`/natures/delete?id=${encodeURIComponent(natureId)}`, { method: 'DELETE' });
+        if (result.success) {
+            showToast('删除成功', 'success');
+            loadNatures();
+        } else {
+            showToast(result.message || '删除失败', 'error');
+        }
+    } catch (error) {
+        showToast('删除失败', 'error');
+    }
+}
+
+
 // ==================== 属性配置 ====================
 
 async function loadTypes() {
@@ -1562,6 +1815,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ==================== 全局函数暴露 ====================
 // 这些函数需要在HTML中通过onclick调用
+// 性格管理函数
+window.showNatureModal = showNatureModal;
+window.editNature = editNature;
+window.deleteNature = deleteNature;
+
+
 
 window.showMonsterModal = showMonsterModal;
 window.editMonster = editMonster;

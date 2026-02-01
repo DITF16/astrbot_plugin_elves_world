@@ -548,6 +548,79 @@ class WebServer:
                 raise HTTPException(status_code=401, detail="未授权")
             return JSONResponse({"success": True, "data": self.config.natures})
 
+        # ==================== 性格API (完整CRUD) ====================
+
+        @app.get("/api/natures/detail")
+        async def get_nature_detail(request: Request, id: str = None):
+            """获取性格详情"""
+            if not self._check_auth(request):
+                raise HTTPException(status_code=401, detail="未授权")
+            if not id:
+                raise HTTPException(status_code=400, detail="缺少id参数")
+            nature = self.config.get_item("natures", id)
+            if not nature:
+                raise HTTPException(status_code=404, detail="性格不存在")
+            return JSONResponse({"success": True, "data": nature})
+
+        @app.post("/api/natures")
+        async def create_nature(request: Request):
+            """创建性格"""
+            if not self._check_auth(request):
+                raise HTTPException(status_code=401, detail="未授权")
+            try:
+                data = await request.json()
+                nature_id = data.get("id")
+                if not nature_id:
+                    return JSONResponse({"success": False, "message": "缺少ID"}, status_code=400)
+                if nature_id in self.config.natures:
+                    return JSONResponse({"success": False, "message": "性格ID已存在"}, status_code=400)
+                # 确保必要字段
+                data.setdefault("name", nature_id)
+                data.setdefault("buff_stat", None)
+                data.setdefault("buff_percent", 0)
+                data.setdefault("debuff_stat", None)
+                data.setdefault("debuff_percent", 0)
+                data.setdefault("weight", 10)
+                data.setdefault("description", "")
+                self.config.set_item("natures", nature_id, data)
+                return JSONResponse({"success": True, "message": "创建成功"})
+            except Exception as e:
+                return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+        @app.put("/api/natures/update")
+        async def update_nature(request: Request, id: str = None):
+            """更新性格"""
+            if not self._check_auth(request):
+                raise HTTPException(status_code=401, detail="未授权")
+            try:
+                if not id:
+                    raise HTTPException(status_code=400, detail="缺少id参数")
+                data = await request.json()
+                if id not in self.config.natures:
+                    raise HTTPException(status_code=404, detail="性格不存在")
+                self.config.set_item("natures", id, data)
+                return JSONResponse({"success": True, "message": "更新成功"})
+            except HTTPException:
+                raise
+            except Exception as e:
+                return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+        @app.delete("/api/natures/delete")
+        async def delete_nature(request: Request, id: str = None):
+            """删除性格"""
+            if not self._check_auth(request):
+                raise HTTPException(status_code=401, detail="未授权")
+            if not id:
+                raise HTTPException(status_code=400, detail="缺少id参数")
+            if id not in self.config.natures:
+                raise HTTPException(status_code=404, detail="性格不存在")
+            # 防止删除最后一个性格
+            if len(self.config.natures) <= 1:
+                return JSONResponse({"success": False, "message": "至少保留一个性格"}, status_code=400)
+            self.config.delete_item("natures", id)
+            return JSONResponse({"success": True, "message": "删除成功"})
+
+
         # ==================== 配置操作API ====================
 
         @app.post("/api/config/reload")
