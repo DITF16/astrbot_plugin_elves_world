@@ -860,7 +860,7 @@ async function loadRegionData(regionId) {
                 form.querySelector('[name="map_size"]').value = region.map_size || 'medium';
                 form.querySelector('[name="unlock_requires"]').value = region.unlock_requires || '';
                 const wildMonsters = (region.wild_monsters || [])
-                    .map(m => `${m.id}:${m.weight || 10}`)
+                    .map(m => `${m.monster_id || m.id || m.name}:${m.weight || 10}`)
                     .join('\n');
                 form.querySelector('[name="wild_monsters"]').value = wildMonsters;
                 form.querySelector('[name="description"]').value = region.description || '';
@@ -883,7 +883,7 @@ async function saveRegion(isEdit) {
         .filter(line => line)
         .map(line => {
             const [id, weight] = line.split(':');
-            return { id: id.trim(), weight: parseInt(weight) || 10 };
+            return { monster_id: id.trim(), weight: parseInt(weight) || 10 };
         });
     const originalId = form.dataset.originalId;
     const newId = formData.get('name');

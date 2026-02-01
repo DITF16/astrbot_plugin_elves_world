@@ -67,9 +67,9 @@ class PlayerHandlers:
             choice = ev.message_str.strip()
 
             starter_map = {
-                "1": "fire_dragon",
-                "2": "water_spirit",
-                "3": "grass_fox"
+                "1": "烈焰龙",
+                "2": "水灵精",
+                "3": "青叶狐"
             }
 
             if choice not in starter_map:
