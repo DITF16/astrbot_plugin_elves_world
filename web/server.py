@@ -219,8 +219,7 @@ class WebServer:
                 data = await request.json()
                 if id not in self.config.monsters:
                     raise HTTPException(status_code=404, detail="精灵不存在")
-                self.config.monsters[id] = data
-                self.config.save_config("monsters")
+                self.config.set_item("monsters", id, data)
                 return JSONResponse({"success": True, "message": "更新成功"})
             except HTTPException:
                 raise
@@ -236,8 +235,7 @@ class WebServer:
                 raise HTTPException(status_code=400, detail="缺少id参数")
             if id not in self.config.monsters:
                 raise HTTPException(status_code=404, detail="精灵不存在")
-            del self.config.monsters[id]
-            self.config.save_config("monsters")
+            self.config.delete_item("monsters", id)
             return JSONResponse({"success": True, "message": "删除成功"})
 
         # ==================== 技能API ====================
@@ -302,8 +300,7 @@ class WebServer:
                 data = await request.json()
                 if id not in self.config.skills:
                     raise HTTPException(status_code=404, detail="技能不存在")
-                self.config.skills[id] = data
-                self.config.save_config("skills")
+                self.config.set_item("skills", id, data)
                 return JSONResponse({"success": True, "message": "更新成功"})
             except HTTPException:
                 raise
@@ -319,8 +316,7 @@ class WebServer:
                 raise HTTPException(status_code=400, detail="缺少id参数")
             if id not in self.config.skills:
                 raise HTTPException(status_code=404, detail="技能不存在")
-            del self.config.skills[id]
-            self.config.save_config("skills")
+            self.config.delete_item("skills", id)
             return JSONResponse({"success": True, "message": "删除成功"})
 
         # ==================== 区域API ====================
@@ -368,8 +364,8 @@ class WebServer:
                     raise HTTPException(status_code=400, detail="缺少id参数")
 
                 data = await request.json()
-                self.config.regions[id] = data
-                self.config.save_config("regions")
+
+                self.config.set_item("regions", id, data)
                 return JSONResponse({"success": True, "message": "更新成功"})
             except Exception as e:
                 return JSONResponse({"success": False, "message": str(e)}, status_code=500)
@@ -381,9 +377,8 @@ class WebServer:
                 raise HTTPException(status_code=401, detail="未授权")
             if not id:
                 raise HTTPException(status_code=400, detail="缺少id参数")
-            if id in self.config.regions:
-                del self.config.regions[id]
-                self.config.save_config("regions")
+
+            self.config.delete_item("regions", id)
             return JSONResponse({"success": True, "message": "删除成功"})
 
         # ==================== BOSS API ====================
@@ -431,8 +426,7 @@ class WebServer:
                     raise HTTPException(status_code=400, detail="缺少id参数")
 
                 data = await request.json()
-                self.config.bosses[id] = data
-                self.config.save_config("bosses")
+                self.config.set_item("bosses", id, data)
                 return JSONResponse({"success": True, "message": "更新成功"})
             except Exception as e:
                 return JSONResponse({"success": False, "message": str(e)}, status_code=500)
@@ -444,9 +438,7 @@ class WebServer:
                 raise HTTPException(status_code=401, detail="未授权")
             if not id:
                 raise HTTPException(status_code=400, detail="缺少id参数")
-            if id in self.config.bosses:
-                del self.config.bosses[id]
-                self.config.save_config("bosses")
+            self.config.delete_item("bosses", id)
             return JSONResponse({"success": True, "message": "删除成功"})
 
         # ==================== 玩家管理API ====================
