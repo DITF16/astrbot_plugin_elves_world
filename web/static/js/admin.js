@@ -448,14 +448,13 @@ function showMonsterModal(monsterId = null) {
 
 async function loadMonsterData(monsterId) {
     try {
-        const result = await api(`/monsters/${monsterId}`);
+        // 改为使用查询参数:
+        const result = await api(`/monsters/detail?id=${encodeURIComponent(monsterId)}`);
         if (result.success) {
             const m = result.data;
             const form = document.getElementById('monster-form');
-
-            form.querySelector('[name="id"]').value = m.id;
             form.querySelector('[name="name"]').value = m.name;
-            form.querySelector('[name="type1"]').value = m.types?.[0] || 'normal';
+            form.querySelector('[name="type1"]').value = m.types?.[0] || 'fire';
             form.querySelector('[name="type2"]').value = m.types?.[1] || '';
             form.querySelector('[name="rarity"]').value = m.rarity || 3;
             form.querySelector('[name="hp"]').value = m.base_stats?.hp || 50;
@@ -466,6 +465,9 @@ async function loadMonsterData(monsterId) {
             form.querySelector('[name="speed"]').value = m.base_stats?.speed || 50;
             form.querySelector('[name="skills"]').value = (m.skills || []).join(', ');
             form.querySelector('[name="description"]').value = m.description || '';
+
+            // 保存原始ID用于更新（存到表单的data属性）
+            form.dataset.originalId = m.id;
         }
     } catch (error) {
         showToast('加载精灵数据失败', 'error');
@@ -475,17 +477,17 @@ async function loadMonsterData(monsterId) {
 async function saveMonster(isEdit) {
     const form = document.getElementById('monster-form');
     const formData = new FormData(form);
-
     const types = [formData.get('type1')];
     if (formData.get('type2')) {
         types.push(formData.get('type2'));
     }
-
     const skillsStr = formData.get('skills') || '';
     const skills = skillsStr.split(',').map(s => s.trim()).filter(s => s);
-
+    // 编辑时用原始ID，新建时用名称作为ID
+    const originalId = form.dataset.originalId;
+    const newId = formData.get('name');  // 用名称作为ID
     const data = {
-        id: formData.get('id'),
+        id: newId,
         name: formData.get('name'),
         types: types,
         rarity: parseInt(formData.get('rarity')),
@@ -500,16 +502,15 @@ async function saveMonster(isEdit) {
         skills: skills,
         description: formData.get('description')
     };
-
     try {
-        const endpoint = isEdit ? `/monsters/${data.id}` : '/monsters';
+        const endpoint = isEdit
+            ? `/monsters/update?id=${encodeURIComponent(originalId)}`
+            : '/monsters';
         const method = isEdit ? 'PUT' : 'POST';
-
         const result = await api(endpoint, {
             method: method,
             body: JSON.stringify(data)
         });
-
         if (result.success) {
             closeModal();
             showToast(isEdit ? '更新成功' : '创建成功', 'success');
@@ -530,9 +531,8 @@ async function deleteMonster(monsterId) {
     if (!confirm(`确定要删除精灵 "${monsterId}" 吗？`)) {
         return;
     }
-
     try {
-        const result = await api(`/monsters/${monsterId}`, { method: 'DELETE' });
+        const result = await api(`/monsters/delete?id=${encodeURIComponent(monsterId)}`, { method: 'DELETE' });
         if (result.success) {
             showToast('删除成功', 'success');
             loadMonsters();
@@ -659,19 +659,20 @@ function showSkillModal(skillId = null) {
 
 async function loadSkillData(skillId) {
     try {
-        const result = await api(`/skills/${skillId}`);
+        const result = await api(`/skills/detail?id=${encodeURIComponent(skillId)}`);
         if (result.success) {
             const s = result.data;
             const form = document.getElementById('skill-form');
-
-            form.querySelector('[name="id"]').value = s.id;
             form.querySelector('[name="name"]').value = s.name;
-            form.querySelector('[name="type"]').value = s.type || 'normal';
+            form.querySelector('[name="type"]').value = s.type || 'fire';
             form.querySelector('[name="category"]').value = s.category || 'physical';
             form.querySelector('[name="priority"]').value = s.priority || 0;
             form.querySelector('[name="power"]').value = s.power || 0;
             form.querySelector('[name="accuracy"]').value = s.accuracy || 100;
             form.querySelector('[name="description"]').value = s.description || '';
+
+            // 保存原始ID
+            form.dataset.originalId = s.id;
         }
     } catch (error) {
         showToast('加载技能数据失败', 'error');
@@ -681,9 +682,10 @@ async function loadSkillData(skillId) {
 async function saveSkill(isEdit) {
     const form = document.getElementById('skill-form');
     const formData = new FormData(form);
-
+    const originalId = form.dataset.originalId;
+    const newId = formData.get('name');
     const data = {
-        id: formData.get('id'),
+        id: newId,
         name: formData.get('name'),
         type: formData.get('type'),
         category: formData.get('category'),
@@ -693,16 +695,15 @@ async function saveSkill(isEdit) {
         description: formData.get('description'),
         effects: []
     };
-
     try {
-        const endpoint = isEdit ? `/skills/${data.id}` : '/skills';
+        const endpoint = isEdit
+            ? `/skills/update?id=${encodeURIComponent(originalId)}`
+            : '/skills';
         const method = isEdit ? 'PUT' : 'POST';
-
         const result = await api(endpoint, {
             method: method,
             body: JSON.stringify(data)
         });
-
         if (result.success) {
             closeModal();
             showToast(isEdit ? '更新成功' : '创建成功', 'success');
@@ -723,9 +724,8 @@ async function deleteSkill(skillId) {
     if (!confirm(`确定要删除技能 "${skillId}" 吗？`)) {
         return;
     }
-
     try {
-        const result = await api(`/skills/${skillId}`, { method: 'DELETE' });
+        const result = await api(`/skills/delete?id=${encodeURIComponent(skillId)}`, { method: 'DELETE' });
         if (result.success) {
             showToast('删除成功', 'success');
             loadSkills();
@@ -853,20 +853,20 @@ async function loadRegionData(regionId) {
             const region = result.data.find(r => r.id === regionId);
             if (region) {
                 const form = document.getElementById('region-form');
-
-                form.querySelector('[name="id"]').value = region.id;
                 form.querySelector('[name="name"]').value = region.name;
                 form.querySelector('[name="level_min"]').value = region.level_range?.[0] || 1;
                 form.querySelector('[name="level_max"]').value = region.level_range?.[1] || 10;
                 form.querySelector('[name="stamina_cost"]').value = region.stamina_cost || 10;
                 form.querySelector('[name="map_size"]').value = region.map_size || 'medium';
                 form.querySelector('[name="unlock_requires"]').value = region.unlock_requires || '';
-
                 const wildMonsters = (region.wild_monsters || [])
                     .map(m => `${m.id}:${m.weight || 10}`)
                     .join('\n');
                 form.querySelector('[name="wild_monsters"]').value = wildMonsters;
                 form.querySelector('[name="description"]').value = region.description || '';
+
+                // 新增：保存原始ID
+                form.dataset.originalId = region.id;
             }
         }
     } catch (error) {
@@ -877,8 +877,6 @@ async function loadRegionData(regionId) {
 async function saveRegion(isEdit) {
     const form = document.getElementById('region-form');
     const formData = new FormData(form);
-
-    // 解析野生精灵
     const wildMonstersStr = formData.get('wild_monsters') || '';
     const wildMonsters = wildMonstersStr.split('\n')
         .map(line => line.trim())
@@ -887,9 +885,10 @@ async function saveRegion(isEdit) {
             const [id, weight] = line.split(':');
             return { id: id.trim(), weight: parseInt(weight) || 10 };
         });
-
+    const originalId = form.dataset.originalId;
+    const newId = formData.get('name');
     const data = {
-        id: formData.get('id'),
+        id: newId,
         name: formData.get('name'),
         level_range: [
             parseInt(formData.get('level_min')) || 1,
@@ -901,16 +900,15 @@ async function saveRegion(isEdit) {
         wild_monsters: wildMonsters,
         description: formData.get('description')
     };
-
     try {
-        const endpoint = isEdit ? `/regions/${data.id}` : '/regions';
+        const endpoint = isEdit
+            ? `/regions/update?id=${encodeURIComponent(originalId)}`
+            : '/regions';
         const method = isEdit ? 'PUT' : 'POST';
-
         const result = await api(endpoint, {
             method: method,
             body: JSON.stringify(data)
         });
-
         if (result.success) {
             closeModal();
             showToast(isEdit ? '更新成功' : '创建成功', 'success');
@@ -931,9 +929,8 @@ async function deleteRegion(regionId) {
     if (!confirm(`确定要删除区域 "${regionId}" 吗？`)) {
         return;
     }
-
     try {
-        const result = await api(`/regions/${regionId}`, { method: 'DELETE' });
+        const result = await api(`/regions/delete?id=${encodeURIComponent(regionId)}`, { method: 'DELETE' });
         if (result.success) {
             showToast('删除成功', 'success');
             loadRegions();
@@ -1094,11 +1091,9 @@ async function loadBossData(bossId) {
             const boss = result.data.find(b => b.id === bossId);
             if (boss) {
                 const form = document.getElementById('boss-form');
-
-                form.querySelector('[name="id"]').value = boss.id;
                 form.querySelector('[name="name"]').value = boss.name;
                 form.querySelector('[name="level"]').value = boss.level || 20;
-                form.querySelector('[name="type1"]').value = boss.types?.[0] || 'normal';
+                form.querySelector('[name="type1"]').value = boss.types?.[0] || 'fire';
                 form.querySelector('[name="region"]').value = boss.region || '';
                 form.querySelector('[name="hp"]').value = boss.base_stats?.hp || 200;
                 form.querySelector('[name="attack"]').value = boss.base_stats?.attack || 80;
@@ -1110,6 +1105,9 @@ async function loadBossData(bossId) {
                 form.querySelector('[name="reward_coins"]').value = boss.rewards?.coins || 500;
                 form.querySelector('[name="reward_exp"]').value = boss.rewards?.exp || 200;
                 form.querySelector('[name="reward_diamonds"]').value = boss.rewards?.diamonds || 10;
+
+                // 新增：保存原始ID
+                form.dataset.originalId = boss.id;
             }
         }
     } catch (error) {
@@ -1120,23 +1118,23 @@ async function loadBossData(bossId) {
 async function saveBoss(isEdit) {
     const form = document.getElementById('boss-form');
     const formData = new FormData(form);
-
     const skillsStr = formData.get('skills') || '';
     const skills = skillsStr.split(',').map(s => s.trim()).filter(s => s);
-
+    const originalId = form.dataset.originalId;
+    const newId = formData.get('name');
     const data = {
-        id: formData.get('id'),
+        id: newId,
         name: formData.get('name'),
         level: parseInt(formData.get('level')) || 20,
         types: [formData.get('type1')],
-        region: formData.get('region') || null,
+        region: formData.get('region'),
         base_stats: {
-            hp: parseInt(formData.get('hp')) || 200,
-            attack: parseInt(formData.get('attack')) || 80,
-            defense: parseInt(formData.get('defense')) || 80,
-            sp_attack: parseInt(formData.get('sp_attack')) || 80,
-            sp_defense: parseInt(formData.get('sp_defense')) || 80,
-            speed: parseInt(formData.get('speed')) || 60
+            hp: parseInt(formData.get('hp')),
+            attack: parseInt(formData.get('attack')),
+            defense: parseInt(formData.get('defense')),
+            sp_attack: parseInt(formData.get('sp_attack')),
+            sp_defense: parseInt(formData.get('sp_defense')),
+            speed: parseInt(formData.get('speed'))
         },
         skills: skills,
         rewards: {
@@ -1145,16 +1143,15 @@ async function saveBoss(isEdit) {
             diamonds: parseInt(formData.get('reward_diamonds')) || 10
         }
     };
-
     try {
-        const endpoint = isEdit ? `/bosses/${data.id}` : '/bosses';
+        const endpoint = isEdit
+            ? `/bosses/update?id=${encodeURIComponent(originalId)}`
+            : '/bosses';
         const method = isEdit ? 'PUT' : 'POST';
-
         const result = await api(endpoint, {
             method: method,
             body: JSON.stringify(data)
         });
-
         if (result.success) {
             closeModal();
             showToast(isEdit ? '更新成功' : '创建成功', 'success');
@@ -1175,9 +1172,8 @@ async function deleteBoss(bossId) {
     if (!confirm(`确定要删除BOSS "${bossId}" 吗？`)) {
         return;
     }
-
     try {
-        const result = await api(`/bosses/${bossId}`, { method: 'DELETE' });
+        const result = await api(`/bosses/delete?id=${encodeURIComponent(bossId)}`, { method: 'DELETE' });
         if (result.success) {
             showToast('删除成功', 'success');
             loadBosses();

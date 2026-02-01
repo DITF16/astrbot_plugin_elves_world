@@ -170,16 +170,18 @@ class WebServer:
                 "total": len(monsters)
             })
 
-        @app.get("/api/monsters/{monster_id}")
-        async def get_monster(request: Request, monster_id: str):
+        @app.get("/api/monsters/detail")
+        async def get_monster(request: Request, id: str = None):
             """获取单个精灵模板"""
             if not self._check_auth(request):
                 raise HTTPException(status_code=401, detail="未授权")
 
-            monster = self.config.get_item("monsters", monster_id)
+            if not id:
+                raise HTTPException(status_code=400, detail="缺少id参数")
+
+            monster = self.config.get_item("monsters", id)
             if not monster:
                 raise HTTPException(status_code=404, detail="精灵不存在")
-
             return JSONResponse({"success": True, "data": monster})
 
         @app.post("/api/monsters")
@@ -205,39 +207,37 @@ class WebServer:
             except Exception as e:
                 return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
-        @app.put("/api/monsters/{monster_id}")
-        async def update_monster(request: Request, monster_id: str):
+        @app.put("/api/monsters/update")
+        async def update_monster(request: Request, id: str = None):
             """更新精灵模板"""
             if not self._check_auth(request):
                 raise HTTPException(status_code=401, detail="未授权")
-
             try:
+                if not id:
+                    raise HTTPException(status_code=400, detail="缺少id参数")
+
                 data = await request.json()
-
-                if monster_id not in self.config.monsters:
+                if id not in self.config.monsters:
                     raise HTTPException(status_code=404, detail="精灵不存在")
-
-                self.config.monsters[monster_id] = data
+                self.config.monsters[id] = data
                 self.config.save_config("monsters")
-
                 return JSONResponse({"success": True, "message": "更新成功"})
             except HTTPException:
                 raise
             except Exception as e:
                 return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
-        @app.delete("/api/monsters/{monster_id}")
-        async def delete_monster(request: Request, monster_id: str):
+        @app.delete("/api/monsters/delete")
+        async def delete_monster(request: Request, id: str = None):
             """删除精灵模板"""
             if not self._check_auth(request):
                 raise HTTPException(status_code=401, detail="未授权")
-
-            if monster_id not in self.config.monsters:
+            if not id:
+                raise HTTPException(status_code=400, detail="缺少id参数")
+            if id not in self.config.monsters:
                 raise HTTPException(status_code=404, detail="精灵不存在")
-
-            del self.config.monsters[monster_id]
+            del self.config.monsters[id]
             self.config.save_config("monsters")
-
             return JSONResponse({"success": True, "message": "删除成功"})
 
         # ==================== 技能API ====================
@@ -255,16 +255,16 @@ class WebServer:
                 "total": len(skills)
             })
 
-        @app.get("/api/skills/{skill_id}")
-        async def get_skill(request: Request, skill_id: str):
+        @app.get("/api/skills/detail")
+        async def get_skill(request: Request, id: str = None):
             """获取单个技能"""
             if not self._check_auth(request):
                 raise HTTPException(status_code=401, detail="未授权")
-
-            skill = self.config.get_item("skills", skill_id)
+            if not id:
+                raise HTTPException(status_code=400, detail="缺少id参数")
+            skill = self.config.get_item("skills", id)
             if not skill:
                 raise HTTPException(status_code=404, detail="技能不存在")
-
             return JSONResponse({"success": True, "data": skill})
 
         @app.post("/api/skills")
@@ -290,39 +290,37 @@ class WebServer:
             except Exception as e:
                 return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
-        @app.put("/api/skills/{skill_id}")
-        async def update_skill(request: Request, skill_id: str):
+        @app.put("/api/skills/update")
+        async def update_skill(request: Request, id: str = None):
             """更新技能"""
             if not self._check_auth(request):
                 raise HTTPException(status_code=401, detail="未授权")
-
             try:
+                if not id:
+                    raise HTTPException(status_code=400, detail="缺少id参数")
+
                 data = await request.json()
-
-                if skill_id not in self.config.skills:
+                if id not in self.config.skills:
                     raise HTTPException(status_code=404, detail="技能不存在")
-
-                self.config.skills[skill_id] = data
+                self.config.skills[id] = data
                 self.config.save_config("skills")
-
                 return JSONResponse({"success": True, "message": "更新成功"})
             except HTTPException:
                 raise
             except Exception as e:
                 return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
-        @app.delete("/api/skills/{skill_id}")
-        async def delete_skill(request: Request, skill_id: str):
+        @app.delete("/api/skills/delete")
+        async def delete_skill(request: Request, id: str = None):
             """删除技能"""
             if not self._check_auth(request):
                 raise HTTPException(status_code=401, detail="未授权")
-
-            if skill_id not in self.config.skills:
+            if not id:
+                raise HTTPException(status_code=400, detail="缺少id参数")
+            if id not in self.config.skills:
                 raise HTTPException(status_code=404, detail="技能不存在")
-
-            del self.config.skills[skill_id]
+            del self.config.skills[id]
             self.config.save_config("skills")
-
             return JSONResponse({"success": True, "message": "删除成功"})
 
         # ==================== 区域API ====================
@@ -360,30 +358,32 @@ class WebServer:
             except Exception as e:
                 return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
-        @app.put("/api/regions/{region_id}")
-        async def update_region(request: Request, region_id: str):
+        @app.put("/api/regions/update")
+        async def update_region(request: Request, id: str = None):
             """更新区域"""
             if not self._check_auth(request):
                 raise HTTPException(status_code=401, detail="未授权")
-
             try:
+                if not id:
+                    raise HTTPException(status_code=400, detail="缺少id参数")
+
                 data = await request.json()
-                self.config.regions[region_id] = data
+                self.config.regions[id] = data
                 self.config.save_config("regions")
                 return JSONResponse({"success": True, "message": "更新成功"})
             except Exception as e:
                 return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
-        @app.delete("/api/regions/{region_id}")
-        async def delete_region(request: Request, region_id: str):
+        @app.delete("/api/regions/delete")
+        async def delete_region(request: Request, id: str = None):
             """删除区域"""
             if not self._check_auth(request):
                 raise HTTPException(status_code=401, detail="未授权")
-
-            if region_id in self.config.regions:
-                del self.config.regions[region_id]
+            if not id:
+                raise HTTPException(status_code=400, detail="缺少id参数")
+            if id in self.config.regions:
+                del self.config.regions[id]
                 self.config.save_config("regions")
-
             return JSONResponse({"success": True, "message": "删除成功"})
 
         # ==================== BOSS API ====================
@@ -421,30 +421,32 @@ class WebServer:
             except Exception as e:
                 return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
-        @app.put("/api/bosses/{boss_id}")
-        async def update_boss(request: Request, boss_id: str):
+        @app.put("/api/bosses/update")
+        async def update_boss(request: Request, id: str = None):
             """更新BOSS"""
             if not self._check_auth(request):
                 raise HTTPException(status_code=401, detail="未授权")
-
             try:
+                if not id:
+                    raise HTTPException(status_code=400, detail="缺少id参数")
+
                 data = await request.json()
-                self.config.bosses[boss_id] = data
+                self.config.bosses[id] = data
                 self.config.save_config("bosses")
                 return JSONResponse({"success": True, "message": "更新成功"})
             except Exception as e:
                 return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
-        @app.delete("/api/bosses/{boss_id}")
-        async def delete_boss(request: Request, boss_id: str):
+        @app.delete("/api/bosses/delete")
+        async def delete_boss(request: Request, id: str = None):
             """删除BOSS"""
             if not self._check_auth(request):
                 raise HTTPException(status_code=401, detail="未授权")
-
-            if boss_id in self.config.bosses:
-                del self.config.bosses[boss_id]
+            if not id:
+                raise HTTPException(status_code=400, detail="缺少id参数")
+            if id in self.config.bosses:
+                del self.config.bosses[id]
                 self.config.save_config("bosses")
-
             return JSONResponse({"success": True, "message": "删除成功"})
 
         # ==================== 玩家管理API ====================
