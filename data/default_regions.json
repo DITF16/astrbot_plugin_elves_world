@@ -9,12 +9,29 @@
     "wild_monsters": [
       {"monster_id": "青叶狐", "weight": 30},
       {"monster_id": "冰晶兔", "weight": 25},
-      {"monster_id": "烈焰龙", "weight": 15},
-      {"monster_id": "水灵精", "weight": 20},
-      {"monster_id": "雷霆狼", "weight": 10}
+      {"monster_id": "火焰猫", "weight": 20},
+      {"monster_id": "水滴龟", "weight": 15},
+      {"monster_id": "小电鼠", "weight": 10}
     ],
     "events": ["treasure_chest", "healing_spring"],
     "boss": "森林守护者"
+  },
+  "翠绿草原": {
+    "name": "翠绿草原",
+    "description": "一望无际的绿色草原，草系精灵的天堂。",
+    "level_range": [5, 15],
+    "stamina_cost": 12,
+    "map_size": "large",
+    "unlock_requires": {"type": "level", "value": 5},
+    "wild_monsters": [
+      {"monster_id": "青叶狐", "weight": 35},
+      {"monster_id": "花蕾鹿", "weight": 30},
+      {"monster_id": "花冠鹿", "weight": 10},
+      {"monster_id": "翠玉九尾", "weight": 5},
+      {"monster_id": "星光蝶", "weight": 20}
+    ],
+    "events": ["treasure_chest", "healing_spring", "rare_monster"],
+    "boss": null
   },
   "烈焰火山": {
     "name": "烈焰火山",
@@ -24,12 +41,30 @@
     "map_size": "large",
     "unlock_requires": {"type": "boss", "id": "森林守护者"},
     "wild_monsters": [
-      {"monster_id": "烈焰龙", "weight": 40},
-      {"monster_id": "炎魔龙", "weight": 10},
-      {"monster_id": "岩石巨人", "weight": 30}
+      {"monster_id": "烈焰龙", "weight": 30},
+      {"monster_id": "火焰猫", "weight": 25},
+      {"monster_id": "烈焰豹", "weight": 20},
+      {"monster_id": "炎晶蜥", "weight": 15},
+      {"monster_id": "炎魔龙", "weight": 10}
     ],
     "events": ["treasure_chest", "lava_trap"],
     "boss": "炎龙之王"
+  },
+  "冰霜雪原": {
+    "name": "冰霜雪原",
+    "description": "终年积雪的极寒之地，冰系精灵在此栖息。",
+    "level_range": [18, 35],
+    "stamina_cost": 22,
+    "map_size": "large",
+    "unlock_requires": {"type": "level", "value": 15},
+    "wild_monsters": [
+      {"monster_id": "冰晶兔", "weight": 35},
+      {"monster_id": "雪绒兔", "weight": 30},
+      {"monster_id": "冰雾狐", "weight": 20},
+      {"monster_id": "水灵精", "weight": 15}
+    ],
+    "events": ["treasure_chest", "blizzard", "frozen_treasure"],
+    "boss": "冰霜女王"
   },
   "深海秘境": {
     "name": "深海秘境",
@@ -39,9 +74,11 @@
     "map_size": "large",
     "unlock_requires": {"type": "boss", "id": "炎龙之王"},
     "wild_monsters": [
-      {"monster_id": "水灵精", "weight": 35},
-      {"monster_id": "海皇龙", "weight": 15},
-      {"monster_id": "冰晶兔", "weight": 25}
+      {"monster_id": "水灵精", "weight": 30},
+      {"monster_id": "水滴龟", "weight": 25},
+      {"monster_id": "巨浪龟", "weight": 15},
+      {"monster_id": "幽暗水母", "weight": 20},
+      {"monster_id": "海皇龙", "weight": 10}
     ],
     "events": ["treasure_chest", "whirlpool"],
     "boss": "深海霸主"
@@ -54,12 +91,63 @@
     "map_size": "medium",
     "unlock_requires": {"type": "level", "value": 20},
     "wild_monsters": [
-      {"monster_id": "雷霆狼", "weight": 40},
-      {"monster_id": "雷神狼王", "weight": 15},
-      {"monster_id": "光明鸟", "weight": 10}
+      {"monster_id": "雷霆狼", "weight": 35},
+      {"monster_id": "小电鼠", "weight": 25},
+      {"monster_id": "雷电鼠", "weight": 20},
+      {"monster_id": "雷暴鹰", "weight": 15},
+      {"monster_id": "雷神狼王", "weight": 5}
     ],
     "events": ["treasure_chest", "lightning_strike"],
     "boss": "雷神"
+  },
+  "圣光神殿": {
+    "name": "圣光神殿",
+    "description": "沐浴在圣光中的古老神殿，光系精灵的圣地。",
+    "level_range": [30, 50],
+    "stamina_cost": 28,
+    "map_size": "medium",
+    "unlock_requires": {"type": "boss", "id": "深海霸主"},
+    "wild_monsters": [
+      {"monster_id": "光明鸟", "weight": 25},
+      {"monster_id": "星光蝶", "weight": 35},
+      {"monster_id": "花冠鹿", "weight": 25},
+      {"monster_id": "雷暴鹰", "weight": 15}
+    ],
+    "events": ["treasure_chest", "holy_blessing", "rare_monster"],
+    "boss": "圣光天使"
+  },
+  "熔岩地狱": {
+    "name": "熔岩地狱",
+    "description": "地底深处的熔岩世界，只有最强的火系精灵才能生存。",
+    "level_range": [35, 55],
+    "stamina_cost": 30,
+    "map_size": "large",
+    "unlock_requires": {"type": "boss", "id": "炎龙之王"},
+    "wild_monsters": [
+      {"monster_id": "炎魔龙", "weight": 30},
+      {"monster_id": "烈焰豹", "weight": 25},
+      {"monster_id": "炎晶蜥", "weight": 25},
+      {"monster_id": "岩石巨人", "weight": 20}
+    ],
+    "events": ["treasure_chest", "lava_trap", "volcanic_eruption"],
+    "boss": "地狱炎魔"
+  },
+  "迷雾沼泽": {
+    "name": "迷雾沼泽",
+    "description": "终年被浓雾笼罩的神秘沼泽，危机四伏。",
+    "level_range": [28, 48],
+    "stamina_cost": 26,
+    "map_size": "large",
+    "unlock_requires": {"type": "level", "value": 25},
+    "wild_monsters": [
+      {"monster_id": "幽暗水母", "weight": 30},
+      {"monster_id": "泥土熊", "weight": 25},
+      {"monster_id": "月影狼", "weight": 20},
+      {"monster_id": "冰雾狐", "weight": 15},
+      {"monster_id": "暗影魔", "weight": 10}
+    ],
+    "events": ["treasure_chest", "poison_trap", "hidden_treasure"],
+    "boss": "沼泽巨兽"
   },
   "暗影深渊": {
     "name": "暗影深渊",
@@ -69,11 +157,48 @@
     "map_size": "huge",
     "unlock_requires": {"type": "boss", "id": "雷神"},
     "wild_monsters": [
-      {"monster_id": "暗影魔", "weight": 40},
-      {"monster_id": "炎魔龙", "weight": 20},
-      {"monster_id": "光明鸟", "weight": 15}
+      {"monster_id": "暗影魔", "weight": 35},
+      {"monster_id": "月影狼", "weight": 25},
+      {"monster_id": "冰雾狐", "weight": 20},
+      {"monster_id": "炎魔龙", "weight": 15},
+      {"monster_id": "幽暗水母", "weight": 5}
     ],
     "events": ["treasure_chest", "dark_trap", "rare_monster"],
     "boss": "深渊领主"
+  },
+  "天空之城": {
+    "name": "天空之城",
+    "description": "漂浮在云端的神秘城市，传说中的神兽栖息之地。",
+    "level_range": [50, 70],
+    "stamina_cost": 40,
+    "map_size": "huge",
+    "unlock_requires": {"type": "boss", "id": "圣光天使"},
+    "wild_monsters": [
+      {"monster_id": "光明鸟", "weight": 30},
+      {"monster_id": "雷暴鹰", "weight": 30},
+      {"monster_id": "雷神狼王", "weight": 20},
+      {"monster_id": "翠玉九尾", "weight": 15},
+      {"monster_id": "海皇龙", "weight": 5}
+    ],
+    "events": ["treasure_chest", "divine_blessing", "legendary_encounter"],
+    "boss": "天空之王"
+  },
+  "混沌裂隙": {
+    "name": "混沌裂隙",
+    "description": "时空裂隙中的混沌世界，所有属性在此交汇。终极挑战之地。",
+    "level_range": [60, 80],
+    "stamina_cost": 50,
+    "map_size": "huge",
+    "unlock_requires": {"type": "boss", "id": "深渊领主"},
+    "wild_monsters": [
+      {"monster_id": "暗影魔", "weight": 20},
+      {"monster_id": "炎魔龙", "weight": 20},
+      {"monster_id": "海皇龙", "weight": 20},
+      {"monster_id": "雷神狼王", "weight": 20},
+      {"monster_id": "光明鸟", "weight": 20}
+    ],
+    "events": ["treasure_chest", "chaos_storm", "legendary_encounter", "rare_monster"],
+    "boss": "混沌之主"
   }
 }
+

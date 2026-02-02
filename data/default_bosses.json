@@ -24,6 +24,32 @@
       ]
     }
   },
+  "冰霜女王": {
+    "name": "冰霜女王",
+    "description": "统治冰霜雪原的冰之女王，能冻结一切生命",
+    "types": ["ice"],
+    "level": 25,
+    "base_stats": {
+      "hp": 180,
+      "attack": 50,
+      "defense": 75,
+      "sp_attack": 95,
+      "sp_defense": 85,
+      "speed": 60
+    },
+    "skills": ["暴风雪", "冰冻光束", "极光冲击", "光之壁"],
+    "rewards": {
+      "exp": 800,
+      "coins": 500,
+      "diamonds": 10,
+      "drops": [
+        {"item_id": "高级精灵球", "amount": 2, "chance": 1.0},
+        {"item_id": "冰之石", "amount": 1, "chance": 0.6},
+        {"item_id": "高级药水", "amount": 3, "chance": 0.8},
+        {"item_id": "神秘碎片", "amount": 2, "chance": 0.4}
+      ]
+    }
+  },
   "炎龙之王": {
     "name": "炎龙之王",
     "description": "火山深处的霸主，炽热的火焰之王",
@@ -77,6 +103,59 @@
       ]
     }
   },
+  "沼泽巨兽": {
+    "name": "沼泽巨兽",
+    "description": "迷雾沼泽深处的远古巨兽，被毒雾包裹",
+    "types": ["water", "ground"],
+    "level": 42,
+    "base_stats": {
+      "hp": 380,
+      "attack": 95,
+      "defense": 110,
+      "sp_attack": 70,
+      "sp_defense": 90,
+      "speed": 40
+    },
+    "skills": ["潮汐冲击", "地震", "噩梦", "铁壁"],
+    "rewards": {
+      "exp": 2200,
+      "coins": 1500,
+      "diamonds": 30,
+      "drops": [
+        {"item_id": "高级精灵球", "amount": 3, "chance": 1.0},
+        {"item_id": "水之石", "amount": 1, "chance": 0.5},
+        {"item_id": "全满药水", "amount": 3, "chance": 0.85},
+        {"item_id": "神秘碎片", "amount": 3, "chance": 0.55}
+      ]
+    }
+  },
+  "圣光天使": {
+    "name": "圣光天使",
+    "description": "圣光神殿的守护者，神圣的光之使者",
+    "types": ["light"],
+    "level": 45,
+    "base_stats": {
+      "hp": 320,
+      "attack": 80,
+      "defense": 90,
+      "sp_attack": 120,
+      "sp_defense": 110,
+      "speed": 85
+    },
+    "skills": ["圣光术", "神圣光辉", "月光", "光之壁"],
+    "rewards": {
+      "exp": 2500,
+      "coins": 1800,
+      "diamonds": 35,
+      "drops": [
+        {"item_id": "高级精灵球", "amount": 3, "chance": 1.0},
+        {"item_id": "光之石", "amount": 1, "chance": 0.7},
+        {"item_id": "全满药水", "amount": 3, "chance": 0.9},
+        {"item_id": "神秘碎片", "amount": 4, "chance": 0.6},
+        {"item_id": "经验糖果L", "amount": 2, "chance": 0.5}
+      ]
+    }
+  },
   "雷神": {
     "name": "雷神",
     "description": "掌控雷电的神兽，一怒之下可引发雷暴",
@@ -102,6 +181,34 @@
         {"item_id": "全满药水", "amount": 3, "chance": 0.9},
         {"item_id": "神秘碎片", "amount": 5, "chance": 0.6},
         {"item_id": "经验糖果L", "amount": 2, "chance": 0.5}
+      ]
+    }
+  },
+  "地狱炎魔": {
+    "name": "地狱炎魔",
+    "description": "熔岩地狱的至高统治者，拥有毁灭一切的烈焰",
+    "types": ["fire", "dark"],
+    "level": 50,
+    "base_stats": {
+      "hp": 350,
+      "attack": 110,
+      "defense": 85,
+      "sp_attack": 130,
+      "sp_defense": 80,
+      "speed": 90
+    },
+    "skills": ["暗黑火焰", "喷射火焰", "地震", "剑舞"],
+    "rewards": {
+      "exp": 3500,
+      "coins": 2500,
+      "diamonds": 50,
+      "drops": [
+        {"item_id": "大师球", "amount": 1, "chance": 0.6},
+        {"item_id": "火之石", "amount": 2, "chance": 0.8},
+        {"item_id": "暗之石", "amount": 1, "chance": 0.4},
+        {"item_id": "全满药水", "amount": 4, "chance": 1.0},
+        {"item_id": "神秘碎片", "amount": 5, "chance": 0.7},
+        {"item_id": "经验糖果L", "amount": 3, "chance": 0.6}
       ]
     }
   },
@@ -132,5 +239,64 @@
         {"item_id": "满复活药", "amount": 2, "chance": 0.6}
       ]
     }
+  },
+  "天空之王": {
+    "name": "天空之王",
+    "description": "天空之城的至高王者，传说中的神兽",
+    "types": ["light", "electric"],
+    "level": 65,
+    "base_stats": {
+      "hp": 420,
+      "attack": 100,
+      "defense": 95,
+      "sp_attack": 150,
+      "sp_defense": 120,
+      "speed": 130
+    },
+    "skills": ["神圣光辉", "闪电链", "高速移动", "圣光术"],
+    "rewards": {
+      "exp": 6000,
+      "coins": 4000,
+      "diamonds": 100,
+      "drops": [
+        {"item_id": "大师球", "amount": 2, "chance": 0.8},
+        {"item_id": "光之石", "amount": 2, "chance": 0.9},
+        {"item_id": "雷之石", "amount": 1, "chance": 0.7},
+        {"item_id": "全满药水", "amount": 5, "chance": 1.0},
+        {"item_id": "传说碎片", "amount": 3, "chance": 0.8},
+        {"item_id": "经验糖果XL", "amount": 2, "chance": 0.6},
+        {"item_id": "满复活药", "amount": 2, "chance": 0.7}
+      ]
+    }
+  },
+  "混沌之主": {
+    "name": "混沌之主",
+    "description": "混沌裂隙的终极存在，掌控所有元素之力的神秘存在",
+    "types": ["dark", "light"],
+    "level": 80,
+    "base_stats": {
+      "hp": 500,
+      "attack": 140,
+      "defense": 120,
+      "sp_attack": 160,
+      "sp_defense": 130,
+      "speed": 110
+    },
+    "skills": ["暗黑火焰", "神圣光辉", "地震", "暴风雪"],
+    "rewards": {
+      "exp": 10000,
+      "coins": 8000,
+      "diamonds": 200,
+      "drops": [
+        {"item_id": "大师球", "amount": 3, "chance": 1.0},
+        {"item_id": "暗之石", "amount": 2, "chance": 0.9},
+        {"item_id": "光之石", "amount": 2, "chance": 0.9},
+        {"item_id": "传说碎片", "amount": 5, "chance": 1.0},
+        {"item_id": "全满药水", "amount": 10, "chance": 1.0},
+        {"item_id": "经验糖果XL", "amount": 3, "chance": 0.8},
+        {"item_id": "满复活药", "amount": 5, "chance": 0.9}
+      ]
+    }
   }
 }
+
