@@ -488,7 +488,13 @@ class WorldManager:
         self._ensure_exit(exp_map, region)
 
         # 确保有BOSS（如果区域配置了BOSS）
+        # 支持两种格式：boss_ids (数组) 或 boss (单个字符串)
         boss_ids = region.get("boss_ids", [])
+        if not boss_ids:
+            # 兼容旧格式：单个boss字段
+            single_boss = region.get("boss", "")
+            if single_boss:
+                boss_ids = [single_boss]
         if boss_ids:
             self._place_boss(exp_map, boss_ids[0])
 

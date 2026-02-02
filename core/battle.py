@@ -241,10 +241,29 @@ class BattleSystem:
             return None
 
         # 从BOSS配置生成精灵
+        # 支持两种方式：1. 使用 monster_template_id 引用现有精灵模板
+        #              2. 直接使用 boss 配置中的 base_stats/types 创建
         template_id = boss_config.get("monster_template_id")
-        monster_template = self.config.get_item("monsters", template_id)
-        if not monster_template:
-            return None
+        
+        if template_id:
+            # 方式1：基于精灵模板
+            monster_template = self.config.get_item("monsters", template_id)
+            if not monster_template:
+                return None
+        else:
+            # 方式2：直接使用 boss 配置作为模板
+            # Boss 配置中需要有 base_stats, types, skills 等字段
+            if not boss_config.get("base_stats"):
+                return None
+            monster_template = {
+                "id": boss_id,
+                "name": boss_config.get("name", boss_id),
+                "types": boss_config.get("types", ["normal"]),
+                "base_stats": boss_config.get("base_stats"),
+                "skills": boss_config.get("skills", []),
+                "evolution": None,
+                "description": boss_config.get("description", "")
+            }
 
         # 创建BOSS精灵实例
         boss_level = boss_config.get("level", 30)
