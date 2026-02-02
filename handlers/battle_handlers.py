@@ -386,9 +386,11 @@ class BattleHandlers:
 
         if turn_result.winner == "player":
             # 胜利
-            # 应用经验和金币倍率
-            exp_gained = int(battle.exp_gained * self.plugin.exp_multiplier)
-            coins_gained = int(battle.coins_gained * self.plugin.coin_multiplier)
+            # 应用经验和金币倍率（包括玩家buff）
+            exp_buff = self.pm.get_buff_multiplier(user_id, "exp_rate")
+            coin_buff = self.pm.get_buff_multiplier(user_id, "coin_rate")
+            exp_gained = int(battle.exp_gained * self.plugin.exp_multiplier * exp_buff)
+            coins_gained = int(battle.coins_gained * self.plugin.coin_multiplier * coin_buff)
 
             # 发放奖励
             self.pm.add_currency(user_id, coins=coins_gained)

@@ -278,6 +278,7 @@ class PlayerHandlers:
             "capture": "捕捉", "heal": "治疗", "revive": "复活",
             "evolution": "进化", "stamina": "体力", "exp": "经验",
             "buff": "增益", "tool": "道具", "gift": "礼包", "material": "材料",
+            "special": "特殊", "subscription": "订阅",  # 新增类型
         }
         return type_names.get(item_type, "其他")
 
@@ -483,9 +484,10 @@ class PlayerHandlers:
                 items_by_type[item_type] = []
             items_by_type[item_type].append((item, count))
 
-        type_order = ["capture", "heal", "revive", "stamina", "exp", "evolution", "buff", "tool", "gift", "material"]
+        type_order = ["capture", "heal", "revive", "stamina", "exp", "evolution", "buff", "tool", "gift", "material", "special", "subscription"]
         type_icons = {"capture": "🔮", "heal": "💊", "revive": "💖", "stamina": "⚡",
-                      "exp": "🍬", "evolution": "💎", "buff": "✨", "tool": "🔧", "gift": "🎁", "material": "🧩"}
+                      "exp": "🍬", "evolution": "💎", "buff": "✨", "tool": "🔧", "gift": "🎁", "material": "🧩",
+                      "special": "⚗️", "subscription": "🎫"}
 
         text = "🎒 我的背包\n━━━━━━━━━━━━━━━━━━━━\n"
         text += f"💰 金币: {player['coins']}  💎 钻石: {player['diamonds']}\n"
@@ -639,6 +641,203 @@ class PlayerHandlers:
                 f"💖 使用了 {item['name']}！\n"
                 f"{monster.get('nickname') or monster['name']} 复活了！HP: {new_hp}/{max_hp}"
             )
+
+
+
+        # ==================== 增益道具 (buff) ====================
+        # 分为持续性增益（捕捉率、经验、金币）和战斗增益（攻击、防御等）
+        elif item_type == "buff":
+            buff_type = effect.get("buff_type", "")
+            buff_value = effect.get("buff_value", 1.5)
+            duration = effect.get("duration_minutes", 30)
+            
+            # 持续性增益道具 - 可在背包中使用
+            if buff_type in ["catch_rate", "exp_rate", "coin_rate"]:
+                # 使用 PlayerManager 的 add_buff 方法
+                success = self.pm.add_buff(
+                    user_id=user_id,
+                    buff_type=buff_type,
+                    buff_value=buff_value,
+                    duration_minutes=duration,
+                    source=item["name"]
+                )
+                
+                if success:
+                    # 扣除道具
+                    self.pm.use_item(user_id, item["id"], 1)
+                    
+                    buff_names = {
+                        "catch_rate": "🎯 捕捉率",
+                        "exp_rate": "📈 经验获取",
+                        "coin_rate": "💰 金币获取"
+                    }
+                    percent = int((buff_value - 1) * 100)
+                    
+                    # 管理员日志
+                    print(f"[道具使用] 玩家 {user_id} 使用 {item['name']} - {buff_names.get(buff_type, buff_type)} +{percent}%，持续 {duration} 分钟")
+                    
+                    yield event.plain_result(
+                        f"✨ 使用成功！\n"
+                        f"━━━━━━━━━━━━━━━━━━━━\n"
+                        f"📦 道具: {item['name']}\n"
+                        f"🎯 效果: {buff_names.get(buff_type, buff_type)} +{percent}%\n"
+                        f"⏱️ 持续: {duration} 分钟\n"
+                        f"━━━━━━━━━━━━━━━━━━━━\n"
+                        f"💡 在探索和战斗中将自动生效！"
+                    )
+                else:
+                    yield event.plain_result("❌ 使用失败，请稍后再试")
+                return
+            
+            # 战斗增益道具 - 只能在战斗中使用
+            else:
+                yield event.plain_result(
+                    f"⚔️ {item['name']} 是战斗增益道具\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📋 效果: {item.get('description', '提升战斗属性')}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"⚠️ 此道具只能在战斗中使用！\n"
+                    f"进入战斗后，选择「道具」选项即可使用"
+                )
+                return
+
+
+
+        # ==================== 特殊道具 (special) ====================
+        # 属性重置药剂、技能遗忘药、技能学习器等
+        elif item_type == "special":
+            item_id = item["id"]
+            monsters = self.pm.get_monsters(user_id)
+            if not monsters:
+                yield event.plain_result("❌ 你还没有精灵")
+                return
+            if target < 1 or target > len(monsters):
+                yield event.plain_result(f"❌ 请指定正确的精灵序号 (1-{len(monsters)})")
+                return
+            
+            monster = monsters[target - 1]
+            from ..core import MonsterInstance
+            monster_inst = MonsterInstance.from_dict(monster, self.config)
+            
+            # 属性重置药剂 - 重置个体值
+            if "属性重置" in item["name"] or effect.get("reset_ivs"):
+                from ..core.formulas import GameFormulas
+                old_ivs = monster_inst.ivs.copy()
+                old_total = sum(old_ivs.values())
+                
+                # 30%概率获得更好的IV
+                bonus_chance = effect.get("bonus_chance", 0.3)
+                if random.random() < bonus_chance:
+                    new_ivs = GameFormulas.generate_ivs(min_iv=10, max_iv=31, guaranteed_max=2)
+                else:
+                    new_ivs = GameFormulas.generate_ivs()
+                
+                monster_inst.ivs = new_ivs
+                monster_inst.recalculate_stats(self.config)
+                self.pm.use_item(user_id, item["id"])
+                self.pm.update_monster(monster_inst)
+                
+                new_total = sum(new_ivs.values())
+                improvement = new_total - old_total
+                
+                text = f"⚗️ 使用了 {item['name']}！\n"
+                text += f"{monster_inst.get_display_name()} 的个体值已重置！\n"
+                text += f"━━━━━━━━━━━━━━━━━━━━\n"
+                text += f"IV总和: {old_total} → {new_total}"
+                if improvement > 0:
+                    text += f" (↑+{improvement} 🎉)"
+                elif improvement < 0:
+                    text += f" (↓{improvement})"
+                else:
+                    text += " (→持平)"
+                yield event.plain_result(text)
+            
+            # 技能遗忘药 - 遗忘一个技能
+            elif "技能遗忘" in item["name"] or effect.get("forget_skill"):
+                if not monster_inst.skills:
+                    yield event.plain_result(f"❌ {monster_inst.get_display_name()} 还没有学会任何技能")
+                    return
+                
+                # 遗忘最后一个技能
+                forgotten_skill_id = monster_inst.skills[-1]
+                skill_info = self.config.get_item("skills", forgotten_skill_id)
+                skill_name = skill_info.get("name", forgotten_skill_id) if skill_info else forgotten_skill_id
+                
+                monster_inst.forget_skill(forgotten_skill_id)
+                self.pm.use_item(user_id, item["id"])
+                self.pm.update_monster(monster_inst)
+                
+                yield event.plain_result(
+                    f"💫 使用了 {item['name']}！\n"
+                    f"{monster_inst.get_display_name()} 遗忘了技能 [{skill_name}]！\n"
+                    f"当前技能槽位: {len(monster_inst.skills)}/4"
+                )
+            
+            # 技能学习器 - 学习随机新技能
+            elif "技能学习" in item["name"] or effect.get("learn_skill"):
+                if len(monster_inst.skills) >= 4:
+                    yield event.plain_result(f"❌ {monster_inst.get_display_name()} 技能槽已满，请先使用技能遗忘药")
+                    return
+                
+                # 获取精灵可学习的技能（根据属性）
+                all_skills = self.config.skills
+                monster_types = monster_inst.types if isinstance(monster_inst.types, list) else [monster_inst.types]
+                
+                # 筛选适合该精灵的技能
+                available_skills = []
+                for skill_id, skill_data in all_skills.items():
+                    if skill_id in monster_inst.skills:
+                        continue  # 跳过已学会的
+                    skill_type = skill_data.get("type", "")
+                    # 可学习同属性技能或普通属性技能
+                    if skill_type in monster_types or skill_type == "normal":
+                        available_skills.append((skill_id, skill_data))
+                
+                if not available_skills:
+                    yield event.plain_result(f"❌ 没有找到 {monster_inst.get_display_name()} 可以学习的新技能")
+                    return
+                
+                # 随机选择一个技能
+                new_skill_id, new_skill_data = random.choice(available_skills)
+                monster_inst.learn_skill(new_skill_id)
+                self.pm.use_item(user_id, item["id"])
+                self.pm.update_monster(monster_inst)
+                
+                yield event.plain_result(
+                    f"📚 使用了 {item['name']}！\n"
+                    f"{monster_inst.get_display_name()} 学会了新技能 [{new_skill_data.get('name', new_skill_id)}]！\n"
+                    f"威力: {new_skill_data.get('power', 0)} | 类型: {new_skill_data.get('type', '普通')}"
+                )
+            
+            else:
+                yield event.plain_result(
+                    f"❌ {item['name']} 的特殊效果尚未实现\n"
+                    f"请联系管理员配置此道具的效果"
+                )
+
+        # ==================== 订阅类道具 (subscription) ====================
+        # 月卡等需要激活后持续生效的道具
+        elif item_type == "subscription":
+            # 目前简化处理：直接发放奖励
+            daily_reward = effect.get("daily_diamonds", 30)
+            duration_days = effect.get("duration_days", 30)
+            
+            # 立即发放首次奖励 + 总价值提示
+            self.pm.use_item(user_id, item["id"])
+            self.pm.add_currency(user_id, diamonds=daily_reward)
+            
+            total_value = daily_reward * duration_days
+            yield event.plain_result(
+                f"🎫 激活了 {item['name']}！\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"📅 有效期: {duration_days}天\n"
+                f"💎 每日奖励: {daily_reward}钻石\n"
+                f"💰 总价值: {total_value}钻石\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"✅ 已发放今日奖励 💎{daily_reward}\n"
+                f"⚠️ 请每天签到领取剩余奖励！"
+            )
+
 
         else:
             yield event.plain_result(

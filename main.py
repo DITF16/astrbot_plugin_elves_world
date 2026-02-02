@@ -53,7 +53,7 @@ class MonsterGamePlugin(Star):
 
         self.db = Database(self.plugin_data_path / "game.db")
         self.player_manager = PlayerManager(self.db, self.game_config)
-        self.battle_system = BattleSystem(self.game_config)
+        self.battle_system = BattleSystem(self.game_config, self.player_manager)
         self.world_manager = WorldManager(self.game_config)
 
         # ==================== 初始化指令处理器 ====================

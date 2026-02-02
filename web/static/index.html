@@ -216,6 +216,7 @@
                     <div class="section-header">
                         <h2>物品管理</h2>
                         <button class="btn btn-primary" onclick="showItemModal()">+ 添加物品</button>
+                        <button class="btn btn-secondary" onclick="showItemTypeHelp()">📖 类型说明</button>
                     </div>
                     <p class="section-description">管理商店物品，包括精灵球、药水、进化石等。设置价格、货币类型和商店上架状态。</p>
                     <div class="filter-bar">
@@ -231,6 +232,8 @@
                             <option value="tool">工具道具</option>
                             <option value="gift">礼包</option>
                             <option value="material">材料</option>
+                            <option value="special">特殊道具</option>
+                            <option value="subscription">订阅道具</option>
                         </select>
                         <select id="item-shop-filter" onchange="filterItems()">
                             <option value="">全部状态</option>

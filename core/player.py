@@ -470,3 +470,141 @@ class PlayerManager:
             text += f"{rank} {p['name']} Lv.{p['level']} - {value}\n"
 
         return text
+
+
+    # ==================== BUFF 管理 ====================
+
+    def get_active_buffs(self, user_id: str) -> Dict:
+        """
+        获取玩家当前激活的 buff 列表
+        
+        Returns:
+            格式: {buff_type: {"value": float, "expires_at": str, "source": str}}
+        """
+        player = self.db.get_player(user_id)
+        if not player:
+            return {}
+        
+        buffs = player.get("active_buffs", {})
+        if isinstance(buffs, str):
+            import json
+            try:
+                buffs = json.loads(buffs)
+            except:
+                buffs = {}
+        
+        # 清理过期的 buff
+        now = datetime.now()
+        valid_buffs = {}
+        for buff_type, buff_data in buffs.items():
+            expires_at_str = buff_data.get("expires_at", "")
+            if expires_at_str:
+                try:
+                    expires_at = datetime.strptime(expires_at_str, "%Y-%m-%d %H:%M:%S")
+                    if expires_at > now:
+                        valid_buffs[buff_type] = buff_data
+                except ValueError:
+                    pass
+        
+        # 如果有过期的 buff，更新数据库
+        if len(valid_buffs) != len(buffs):
+            self._save_buffs(user_id, valid_buffs)
+        
+        return valid_buffs
+
+    def add_buff(self, user_id: str, buff_type: str, buff_value: float, 
+                 duration_minutes: int, source: str = "item") -> bool:
+        """
+        给玩家添加一个 buff
+        
+        Args:
+            user_id: 玩家ID
+            buff_type: buff 类型 (catch_rate, exp_rate, coin_rate 等)
+            buff_value: buff 数值（倍率，如 1.5 表示 +50%）
+            duration_minutes: 持续时间（分钟）
+            source: 来源（道具名称等）
+        
+        Returns:
+            是否成功
+        """
+        buffs = self.get_active_buffs(user_id)
+        
+        expires_at = datetime.now()
+        from datetime import timedelta
+        expires_at += timedelta(minutes=duration_minutes)
+        
+        buffs[buff_type] = {
+            "value": buff_value,
+            "expires_at": expires_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "source": source
+        }
+        
+        return self._save_buffs(user_id, buffs)
+
+    def remove_buff(self, user_id: str, buff_type: str) -> bool:
+        """移除指定的 buff"""
+        buffs = self.get_active_buffs(user_id)
+        if buff_type in buffs:
+            del buffs[buff_type]
+            return self._save_buffs(user_id, buffs)
+        return False
+
+    def get_buff_multiplier(self, user_id: str, buff_type: str) -> float:
+        """
+        获取指定类型 buff 的倍率
+        
+        Returns:
+            倍率值，无 buff 时返回 1.0
+        """
+        buffs = self.get_active_buffs(user_id)
+        if buff_type in buffs:
+            return buffs[buff_type].get("value", 1.0)
+        return 1.0
+
+    def _save_buffs(self, user_id: str, buffs: Dict) -> bool:
+        """保存 buff 数据到数据库"""
+        import json
+        return self.db.update_player(user_id, {
+            "active_buffs": json.dumps(buffs, ensure_ascii=False)
+        })
+
+    def get_buffs_text(self, user_id: str) -> str:
+        """获取玩家当前 buff 的文本描述"""
+        buffs = self.get_active_buffs(user_id)
+        if not buffs:
+            return "当前没有激活的增益效果"
+        
+        buff_names = {
+            "catch_rate": "🎯 捕捉率",
+            "exp_rate": "📈 经验",
+            "coin_rate": "💰 金币",
+            "attack": "⚔️ 攻击",
+            "defense": "🛡️ 防御",
+            "speed": "💨 速度",
+            "critical": "🎯 暴击"
+        }
+        
+        now = datetime.now()
+        lines = ["✨ 当前增益效果："]
+        
+        for buff_type, data in buffs.items():
+            name = buff_names.get(buff_type, buff_type)
+            value = data.get("value", 1.0)
+            expires_at_str = data.get("expires_at", "")
+            
+            try:
+                expires_at = datetime.strptime(expires_at_str, "%Y-%m-%d %H:%M:%S")
+                remaining = expires_at - now
+                remaining_mins = int(remaining.total_seconds() / 60)
+                if remaining_mins >= 60:
+                    time_str = f"{remaining_mins // 60}小时{remaining_mins % 60}分钟"
+                else:
+                    time_str = f"{remaining_mins}分钟"
+            except:
+                time_str = "未知"
+            
+            percent = int((value - 1) * 100) if value > 1 else int(value * 100)
+            lines.append(f"  {name} +{percent}% (剩余 {time_str})")
+        
+        return "\n".join(lines)
+

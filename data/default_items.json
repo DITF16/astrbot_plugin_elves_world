@@ -1006,8 +1006,8 @@
     "shop_available": true,
     "max_stack": 5,
     "effect": {
-      "reset_iv": true,
-      "iv_boost_chance": 30
+      "reset_ivs": true,
+      "bonus_chance": 0.3
     }
   },
   "技能遗忘药": {
@@ -1041,7 +1041,7 @@
     "shop_available": true,
     "max_stack": 10,
     "effect": {
-      "learn_random_skill": true
+      "learn_skill": true
     }
   },
   "精灵之尘": {

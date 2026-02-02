@@ -178,7 +178,7 @@ class BattleSystem:
         1: 4/3, 2: 5/3, 3: 6/3, 4: 7/3, 5: 8/3, 6: 9/3
     }
 
-    def __init__(self, config_manager: "ConfigManager"):
+    def __init__(self, config_manager: "ConfigManager", player_manager=None):
         """
         初始化战斗系统
 
@@ -186,6 +186,7 @@ class BattleSystem:
             config_manager: 配置管理器
         """
         self.config = config_manager
+        self.player_manager = player_manager  # 用于获取玩家buff
 
     # ==================== 战斗创建 ====================
 
@@ -966,16 +967,26 @@ class BattleSystem:
             ball_bonus=1.0
         )
 
+        # 应用玩家的捕捉率buff
+        buff_multiplier = 1.0
+        buff_msg = ""
+        if self.player_manager and battle.player_id:
+            buff_multiplier = self.player_manager.get_buff_multiplier(battle.player_id, "catch_rate")
+            if buff_multiplier > 1.0:
+                buff_msg = f" (🎯捕捉率+{int((buff_multiplier-1)*100)}%)"
+        
+        catch_chance = min(0.95, catch_chance * buff_multiplier)  # 最高95%
+
         enemy_name = enemy_monster.get("nickname") or enemy_monster.get("name", "???")
 
         if random.random() < catch_chance:
             return {
                 "success": True,
-                "message": f"捕捉成功！{enemy_name} 成为了你的伙伴！",
+                "message": f"捕捉成功！{enemy_name} 成为了你的伙伴！{buff_msg}",
                 "caught_monster": enemy_monster
             }
         else:
-            return {"success": False, "message": f"捕捉失败！{enemy_name} 挣脱了！"}
+            return {"success": False, "message": f"捕捉失败！{enemy_name} 挣脱了！{buff_msg}"}
 
     def _generate_enemy_action(self, battle: BattleState) -> BattleAction:
         """生成敌方AI行动"""

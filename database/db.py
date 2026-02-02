@@ -80,6 +80,7 @@ class Database:
                         settings TEXT DEFAULT '{}',
                         last_stamina_update TEXT,
                         last_daily_reward TEXT,
+                        active_buffs TEXT DEFAULT '{}',
                         created_at TEXT,
                         updated_at TEXT
                     )
@@ -130,6 +131,21 @@ class Database:
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_monsters_owner ON monsters(owner_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_inventory_owner ON inventory(owner_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_boss_records_user ON boss_records(user_id)')
+
+                # 数据库迁移：为现有数据库添加缺失的列
+                self._migrate_database(cursor)
+
+    def _migrate_database(self, cursor):
+        """数据库迁移：检查并添加缺失的列"""
+        # 检查 players 表是否有 active_buffs 列
+        cursor.execute("PRAGMA table_info(players)")
+        columns = [row['name'] for row in cursor.fetchall()]
+        
+        # 添加 active_buffs 列（如果不存在）
+        if 'active_buffs' not in columns:
+            cursor.execute("ALTER TABLE players ADD COLUMN active_buffs TEXT DEFAULT '{}'")
+            print("[DB] 迁移: 添加 active_buffs 列到 players 表")
+
 
     # ==================== 玩家操作 ====================
 

@@ -1442,8 +1442,97 @@ async function deleteBoss(bossId) {
 // 物品类型映射
 const itemTypeNames = {
     capture: '捕捉', heal: '治疗', revive: '复活', evolution: '进化',
-    stamina: '体力', exp: '经验', buff: '增益', tool: '道具', gift: '礼包', material: '材料'
+    stamina: '体力', exp: '经验', buff: '增益', tool: '道具', gift: '礼包', material: '材料',
+    special: '特殊', subscription: '订阅'  // 新增类型
 };
+
+
+// 物品类型详细说明（供管理员参考）
+const itemTypeDescriptions = {
+    capture: {
+        name: '🔮 捕捉球类',
+        desc: '用于捕捉野生精灵，不同精灵球有不同的捕捉加成效果',
+        usage: '探索/战斗中遇到野生精灵时使用'
+    },
+    heal: {
+        name: '💊 治疗药品',
+        desc: '恢复精灵HP或治疗异常状态（中毒、灼伤等）',
+        usage: '背包中使用，需指定目标精灵序号'
+    },
+    revive: {
+        name: '💖 复活药',
+        desc: '复活已濒死的精灵，恢复一定比例HP',
+        usage: '背包中使用，需指定濒死精灵序号'
+    },
+    stamina: {
+        name: '⚡ 体力药水',
+        desc: '恢复玩家体力值，用于探索和战斗',
+        usage: '背包中直接使用'
+    },
+    exp: {
+        name: '🍬 经验道具',
+        desc: '为精灵提供经验值，加速升级',
+        usage: '背包中使用，需指定目标精灵序号'
+    },
+    evolution: {
+        name: '💎 进化石',
+        desc: '特定属性的进化道具，用于进化精灵',
+        usage: '精灵满足进化条件时在进化菜单使用'
+    },
+    buff: {
+        name: '⚔️ 战斗增益',
+        desc: '提升精灵战斗属性（攻击/防御/速度/暴击等）',
+        usage: '【仅战斗中使用】选择道具菜单使用，效果持续数回合'
+    },
+    tool: {
+        name: '🔧 工具道具',
+        desc: '各类功能性道具',
+        usage: '根据道具功能在相应场景使用'
+    },
+    gift: {
+        name: '🎁 礼包',
+        desc: '包含多种奖励的礼包，开启获得随机道具/货币',
+        usage: '背包中直接使用开启'
+    },
+    material: {
+        name: '📦 材料',
+        desc: '用于合成或特殊用途的材料，部分为BOSS掉落的稀有道具',
+        usage: '收集材料用于后续合成系统（开发中）'
+    },
+    special: {
+        name: '⚗️ 特殊道具',
+        desc: '属性重置、技能遗忘、技能学习等高级功能道具',
+        usage: '背包中使用，需指定目标精灵序号。如：属性重置药剂可重新生成精灵IV值'
+    },
+    subscription: {
+        name: '🎫 订阅道具',
+        desc: '月卡等持续生效的特权道具，每日签到领取奖励',
+        usage: '背包中激活，之后每日签到自动发放奖励'
+    }
+};
+
+/**
+ * 显示物品类型说明弹窗
+ */
+function showItemTypeHelp() {
+    let content = '<div style="max-height:400px;overflow-y:auto;">';
+    content += '<table class="help-table" style="width:100%;border-collapse:collapse;">';
+    content += '<tr style="background:#333;"><th style="padding:8px;text-align:left;">类型</th><th style="padding:8px;text-align:left;">说明</th><th style="padding:8px;text-align:left;">使用场景</th></tr>';
+    
+    for (const [type, info] of Object.entries(itemTypeDescriptions)) {
+        content += `<tr style="border-bottom:1px solid #444;">
+            <td style="padding:8px;white-space:nowrap;">${info.name}</td>
+            <td style="padding:8px;">${info.desc}</td>
+            <td style="padding:8px;color:#888;">${info.usage}</td>
+        </tr>`;
+    }
+    
+    content += '</table></div>';
+    content += '<p style="margin-top:15px;color:#888;font-size:12px;">💡 提示：buff类型道具只能在战斗中使用，special类型需要指定精灵序号</p>';
+    
+    showModal('📖 物品类型说明', content, null);
+}
+
 
 // 缓存物品数据用于筛选
 let allItemsCache = [];
@@ -1561,6 +1650,8 @@ async function showItemModal(itemId = null) {
                         <option value="tool" ${item.type === 'tool' ? 'selected' : ''}>工具道具</option>
                         <option value="gift" ${item.type === 'gift' ? 'selected' : ''}>礼包</option>
                         <option value="material" ${item.type === 'material' ? 'selected' : ''}>材料</option>
+                        <option value="special" ${item.type === 'special' ? 'selected' : ''}>✨特殊道具（重置IV/技能遗忘/技能学习）</option>
+                        <option value="subscription" ${item.type === 'subscription' ? 'selected' : ''}>🎫订阅道具（月卡等持续生效）</option>
                     </select>
                 </div>
                 <div class="form-group">
