@@ -390,11 +390,27 @@ class WebServer:
                 raise HTTPException(status_code=401, detail="未授权")
 
             bosses = self.config.bosses
+            regions = self.config.regions
+            
+            # 构建 Boss ID -> 区域名称 的映射
+            boss_region_map = {}
+            for region_id, region_data in regions.items():
+                if region_data.get("boss"):
+                    boss_region_map[region_data["boss"]] = region_data.get("name", region_id)
+            
+            # 为每个 Boss 附加所在区域信息
+            boss_list = []
+            for boss in bosses.values():
+                boss_copy = dict(boss)
+                boss_copy["region"] = boss_region_map.get(boss.get("id"), "")
+                boss_list.append(boss_copy)
+            
             return JSONResponse({
                 "success": True,
-                "data": list(bosses.values()),
-                "total": len(bosses)
+                "data": boss_list,
+                "total": len(boss_list)
             })
+
 
         @app.post("/api/bosses")
         async def create_boss(request: Request):
