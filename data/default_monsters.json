@@ -215,6 +215,330 @@
     "learnable_skills": {},
     "evolution": null
   },
+  "火焰猫": {
+    "name": "火焰猫",
+    "description": "身披火红毛发的小猫精灵，尾巴末端燃烧着小火苗。",
+    "types": ["fire"],
+    "rarity": 2,
+    "base_stats": {
+      "hp": 40,
+      "attack": 45,
+      "defense": 30,
+      "sp_attack": 50,
+      "sp_defense": 35,
+      "speed": 60
+    },
+    "skills": ["火球术", "电光一闪", "烈焰爪"],
+    "learnable_skills": {
+      "12": "火焰吐息",
+      "20": "烈火冲撞"
+    },
+    "evolution": {
+      "to": "烈焰豹",
+      "level": 25
+    }
+  },
+  "烈焰豹": {
+    "name": "烈焰豹",
+    "description": "火焰猫的进化形态，速度极快的火焰猎手。",
+    "types": ["fire"],
+    "rarity": 4,
+    "base_stats": {
+      "hp": 65,
+      "attack": 75,
+      "defense": 55,
+      "sp_attack": 80,
+      "sp_defense": 60,
+      "speed": 95
+    },
+    "skills": ["喷射火焰", "烈火冲撞", "高速移动", "龙息"],
+    "learnable_skills": {},
+    "evolution": null
+  },
+  "水滴龟": {
+    "name": "水滴龟",
+    "description": "背壳上会冒出水泡的小龟精灵，性格非常温顺。",
+    "types": ["water"],
+    "rarity": 2,
+    "base_stats": {
+      "hp": 50,
+      "attack": 30,
+      "defense": 55,
+      "sp_attack": 40,
+      "sp_defense": 50,
+      "speed": 25
+    },
+    "skills": ["水枪", "守护", "泡沫"],
+    "learnable_skills": {
+      "14": "水流环",
+      "22": "冲浪"
+    },
+    "evolution": {
+      "to": "巨浪龟",
+      "level": 28
+    }
+  },
+  "巨浪龟": {
+    "name": "巨浪龟",
+    "description": "水滴龟的进化形态，背壳坚如磐石，能引发巨浪。",
+    "types": ["water", "ground"],
+    "rarity": 4,
+    "base_stats": {
+      "hp": 90,
+      "attack": 60,
+      "defense": 100,
+      "sp_attack": 70,
+      "sp_defense": 85,
+      "speed": 40
+    },
+    "skills": ["冲浪", "地震", "潮汐冲击", "铁壁"],
+    "learnable_skills": {},
+    "evolution": null
+  },
+  "花蕾鹿": {
+    "name": "花蕾鹿",
+    "description": "头顶绽放着花苞的小鹿精灵，春天时花苞会盛开。",
+    "types": ["grass"],
+    "rarity": 2,
+    "base_stats": {
+      "hp": 45,
+      "attack": 35,
+      "defense": 40,
+      "sp_attack": 45,
+      "sp_defense": 45,
+      "speed": 50
+    },
+    "skills": ["藤鞭", "电光一闪", "光合作用"],
+    "learnable_skills": {
+      "15": "飞叶快刀",
+      "23": "催眠粉"
+    },
+    "evolution": {
+      "to": "花冠鹿",
+      "level": 26
+    }
+  },
+  "花冠鹿": {
+    "name": "花冠鹿",
+    "description": "花蕾鹿的进化形态，头顶的花冠散发着治愈的芬芳。",
+    "types": ["grass", "light"],
+    "rarity": 4,
+    "base_stats": {
+      "hp": 75,
+      "attack": 60,
+      "defense": 65,
+      "sp_attack": 85,
+      "sp_defense": 80,
+      "speed": 75
+    },
+    "skills": ["花瓣飞舞", "月光", "圣光术", "催眠粉"],
+    "learnable_skills": {},
+    "evolution": null
+  },
+  "小电鼠": {
+    "name": "小电鼠",
+    "description": "脸颊带有电力袋的小老鼠精灵，非常活泼好动。",
+    "types": ["electric"],
+    "rarity": 2,
+    "base_stats": {
+      "hp": 35,
+      "attack": 40,
+      "defense": 30,
+      "sp_attack": 55,
+      "sp_defense": 35,
+      "speed": 65
+    },
+    "skills": ["电击", "电光一闪", "撞击"],
+    "learnable_skills": {
+      "10": "电光",
+      "18": "电磁波"
+    },
+    "evolution": {
+      "to": "雷电鼠",
+      "level": 22
+    }
+  },
+  "雷电鼠": {
+    "name": "雷电鼠",
+    "description": "小电鼠的进化形态，全身充满电能，跑动时会产生静电。",
+    "types": ["electric"],
+    "rarity": 3,
+    "base_stats": {
+      "hp": 55,
+      "attack": 60,
+      "defense": 45,
+      "sp_attack": 80,
+      "sp_defense": 55,
+      "speed": 95
+    },
+    "skills": ["十万伏特", "电光", "雷电拳", "高速移动"],
+    "learnable_skills": {
+      "30": "闪电链"
+    },
+    "evolution": null
+  },
+  "雪绒兔": {
+    "name": "雪绒兔",
+    "description": "全身覆盖着白色绒毛的兔子精灵，喜欢在雪地玩耍。",
+    "types": ["ice"],
+    "rarity": 2,
+    "base_stats": {
+      "hp": 40,
+      "attack": 25,
+      "defense": 35,
+      "sp_attack": 45,
+      "sp_defense": 45,
+      "speed": 55
+    },
+    "skills": ["冰柱针", "电光一闪", "守护"],
+    "learnable_skills": {
+      "14": "冰冻光束",
+      "22": "极光冲击"
+    },
+    "evolution": {
+      "to": "冰晶兔",
+      "level": 24
+    }
+  },
+  "泥土熊": {
+    "name": "泥土熊",
+    "description": "喜欢在土里打滚的熊型精灵，力大无穷。",
+    "types": ["ground"],
+    "rarity": 2,
+    "base_stats": {
+      "hp": 55,
+      "attack": 55,
+      "defense": 50,
+      "sp_attack": 25,
+      "sp_defense": 40,
+      "speed": 30
+    },
+    "skills": ["泥巴射击", "撞击", "守护"],
+    "learnable_skills": {
+      "16": "岩石封锁",
+      "24": "地震"
+    },
+    "evolution": {
+      "to": "岩石巨人",
+      "level": 30
+    }
+  },
+  "星光蝶": {
+    "name": "星光蝶",
+    "description": "翅膀上有星星图案的蝴蝶精灵，在月光下会发光。",
+    "types": ["light"],
+    "rarity": 3,
+    "base_stats": {
+      "hp": 50,
+      "attack": 35,
+      "defense": 40,
+      "sp_attack": 75,
+      "sp_defense": 70,
+      "speed": 65
+    },
+    "skills": ["圣光术", "月光", "催眠粉"],
+    "learnable_skills": {
+      "20": "光之壁",
+      "28": "神圣光辉"
+    },
+    "evolution": null
+  },
+  "月影狼": {
+    "name": "月影狼",
+    "description": "在月夜行动的神秘狼型精灵，双眼在黑暗中闪烁红光。",
+    "types": ["dark"],
+    "rarity": 4,
+    "base_stats": {
+      "hp": 60,
+      "attack": 75,
+      "defense": 50,
+      "sp_attack": 55,
+      "sp_defense": 50,
+      "speed": 85
+    },
+    "skills": ["暗夜突袭", "恶意追击", "高速移动"],
+    "learnable_skills": {
+      "18": "暗影球",
+      "26": "噩梦"
+    },
+    "evolution": {
+      "to": "暗影魔",
+      "level": 36
+    }
+  },
+  "炎晶蜥": {
+    "name": "炎晶蜥",
+    "description": "身体表面覆盖着火焰晶石的蜥蜴精灵。",
+    "types": ["fire", "ground"],
+    "rarity": 3,
+    "base_stats": {
+      "hp": 55,
+      "attack": 60,
+      "defense": 65,
+      "sp_attack": 50,
+      "sp_defense": 45,
+      "speed": 40
+    },
+    "skills": ["火焰吐息", "泥巴射击", "火焰旋涡"],
+    "learnable_skills": {
+      "22": "地震",
+      "30": "烈火冲撞"
+    },
+    "evolution": null
+  },
+  "冰雾狐": {
+    "name": "冰雾狐",
+    "description": "能释放冰冷雾气的狐狸精灵，非常聪明狡猾。",
+    "types": ["ice", "dark"],
+    "rarity": 4,
+    "base_stats": {
+      "hp": 55,
+      "attack": 50,
+      "defense": 45,
+      "sp_attack": 85,
+      "sp_defense": 70,
+      "speed": 90
+    },
+    "skills": ["冰冻光束", "暗夜突袭", "极光冲击", "噩梦"],
+    "learnable_skills": {},
+    "evolution": null
+  },
+  "雷暴鹰": {
+    "name": "雷暴鹰",
+    "description": "翱翔于雷云之间的雄鹰精灵，翅膀拍打会产生雷电。",
+    "types": ["electric", "light"],
+    "rarity": 4,
+    "base_stats": {
+      "hp": 65,
+      "attack": 80,
+      "defense": 55,
+      "sp_attack": 75,
+      "sp_defense": 60,
+      "speed": 100
+    },
+    "skills": ["十万伏特", "圣光术", "高速移动", "闪电链"],
+    "learnable_skills": {},
+    "evolution": null
+  },
+  "幽暗水母": {
+    "name": "幽暗水母",
+    "description": "生活在深海的神秘水母精灵，触手带有剧毒。",
+    "types": ["water", "dark"],
+    "rarity": 3,
+    "base_stats": {
+      "hp": 60,
+      "attack": 40,
+      "defense": 50,
+      "sp_attack": 80,
+      "sp_defense": 75,
+      "speed": 55
+    },
+    "skills": ["水枪", "暗影球", "水流环", "噩梦"],
+    "learnable_skills": {
+      "25": "潮汐冲击"
+    },
+    "evolution": null
+  },
   "暗影魔": {
     "name": "暗影魔",
     "description": "潜伏于黑暗中的神秘生物，以恐惧为食。",

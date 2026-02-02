@@ -70,7 +70,7 @@
     "category": "special",
     "power": 40,
     "accuracy": 100,
-    "effects": [{"type": "stat", "stat": "speed", "stages": -1, "chance": 10}]
+    "effects": [{"type": "speed_down", "value": 20, "duration": 3, "chance": 10}]
   },
   "水流环": {
     "name": "水流环",
@@ -200,21 +200,21 @@
   },
   "泥巴射击": {
     "name": "泥巴射击",
-    "description": "向对手投掷泥巴，降低命中率",
+    "description": "向对手投掷泥巴，必定降低命中率",
     "type": "ground",
     "category": "special",
     "power": 55,
     "accuracy": 95,
-    "effects": [{"type": "stat", "stat": "accuracy", "stages": -1, "chance": 100}]
+    "effects": [{"type": "accuracy_down", "value": 20, "duration": 3, "chance": 100}]
   },
   "光之壁": {
     "name": "光之壁",
-    "description": "展开光之屏障，提升特防",
+    "description": "展开光之屏障，大幅提升特防",
     "type": "light",
     "category": "status",
     "power": 0,
     "accuracy": 100,
-    "effects": [{"type": "stat", "stat": "sp_defense", "stages": 2, "target": "self"}]
+    "effects": [{"type": "sp_defense_up", "value": 40, "duration": 3}]
   },
   "圣光术": {
     "name": "圣光术",
@@ -232,7 +232,7 @@
     "category": "special",
     "power": 80,
     "accuracy": 100,
-    "effects": [{"type": "stat", "stat": "sp_defense", "stages": -1, "chance": 20}]
+    "effects": [{"type": "sp_defense_down", "value": 20, "duration": 3, "chance": 20}]
   },
   "暗黑火焰": {
     "name": "暗黑火焰",
@@ -264,20 +264,205 @@
   },
   "剑舞": {
     "name": "剑舞",
-    "description": "激烈的舞蹈，大幅提升攻击力",
+    "description": "激烈舞动提升攻击力",
     "type": "normal",
     "category": "status",
     "power": 0,
     "accuracy": 100,
-    "effects": [{"type": "stat", "stat": "attack", "stages": 2, "target": "self"}]
+    "effects": [{"type": "attack_up", "value": 40, "duration": 3}]
   },
   "高速移动": {
     "name": "高速移动",
-    "description": "放松身体提高速度",
+    "description": "放松身体大幅提高速度",
     "type": "normal",
     "category": "status",
     "power": 0,
     "accuracy": 100,
-    "effects": [{"type": "stat", "stat": "speed", "stages": 2, "target": "self"}]
+    "effects": [{"type": "speed_up", "value": 40, "duration": 3}]
+  },
+  "冰柱针": {
+    "name": "冰柱针",
+    "description": "发射锋利的冰柱刺向对手",
+    "type": "ice",
+    "category": "physical",
+    "power": 50,
+    "accuracy": 100,
+    "effects": [{"type": "freeze", "chance": 5}]
+  },
+  "极光冲击": {
+    "name": "极光冲击",
+    "description": "释放七彩极光能量冲击对手，可能降低特防",
+    "type": "ice",
+    "category": "special",
+    "power": 85,
+    "accuracy": 95,
+    "effects": [{"type": "sp_defense_down", "value": 20, "duration": 3, "chance": 30}]
+  },
+  "岩石封锁": {
+    "name": "岩石封锁",
+    "description": "用岩石包围对手，必定降低速度",
+    "type": "ground",
+    "category": "physical",
+    "power": 60,
+    "accuracy": 95,
+    "effects": [{"type": "speed_down", "value": 20, "duration": 3, "chance": 100}]
+  },
+  "大地之力": {
+    "name": "大地之力",
+    "description": "从地下释放大地能量攻击，可能降低特防",
+    "type": "ground",
+    "category": "special",
+    "power": 90,
+    "accuracy": 100,
+    "effects": [{"type": "sp_defense_down", "value": 20, "duration": 3, "chance": 10}]
+  },
+  "月光": {
+    "name": "月光",
+    "description": "沐浴月光恢复HP",
+    "type": "light",
+    "category": "status",
+    "power": 0,
+    "accuracy": 100,
+    "effects": [{"type": "heal", "value": 50, "target": "self"}]
+  },
+  "神圣光辉": {
+    "name": "神圣光辉",
+    "description": "释放神圣光芒净化黑暗",
+    "type": "light",
+    "category": "special",
+    "power": 95,
+    "accuracy": 100,
+    "effects": []
+  },
+  "暗夜突袭": {
+    "name": "暗夜突袭",
+    "description": "从暗影中突然袭击，必定先制",
+    "type": "dark",
+    "category": "physical",
+    "power": 50,
+    "accuracy": 100,
+    "priority": 1,
+    "effects": []
+  },
+  "噩梦": {
+    "name": "噩梦",
+    "description": "让对手陷入噩梦，持续扣血",
+    "type": "dark",
+    "category": "status",
+    "power": 0,
+    "accuracy": 100,
+    "effects": [{"type": "nightmare"}]
+  },
+  "烈火冲撞": {
+    "name": "烈火冲撞",
+    "description": "全身缠绕火焰冲撞对手",
+    "type": "fire",
+    "category": "physical",
+    "power": 80,
+    "accuracy": 85,
+    "effects": [{"type": "burn", "chance": 30}, {"type": "recoil", "value": 25}]
+  },
+  "火焰旋涡": {
+    "name": "火焰旋涡",
+    "description": "用火焰旋涡困住对手",
+    "type": "fire",
+    "category": "special",
+    "power": 35,
+    "accuracy": 85,
+    "effects": [{"type": "trap", "turns": 4}]
+  },
+  "水流飞射": {
+    "name": "水流飞射",
+    "description": "高压水流攻击，必定先制",
+    "type": "water",
+    "category": "special",
+    "power": 40,
+    "accuracy": 100,
+    "priority": 1,
+    "effects": []
+  },
+  "潮汐冲击": {
+    "name": "潮汐冲击",
+    "description": "召唤潮汐力量冲击对手",
+    "type": "water",
+    "category": "special",
+    "power": 85,
+    "accuracy": 100,
+    "effects": []
+  },
+  "花瓣飞舞": {
+    "name": "花瓣飞舞",
+    "description": "释放漫天花瓣攻击对手",
+    "type": "grass",
+    "category": "special",
+    "power": 90,
+    "accuracy": 100,
+    "effects": []
+  },
+  "催眠粉": {
+    "name": "催眠粉",
+    "description": "撒出催眠花粉使对手睡眠",
+    "type": "grass",
+    "category": "status",
+    "power": 0,
+    "accuracy": 75,
+    "effects": [{"type": "sleep", "chance": 100}]
+  },
+  "雷电拳": {
+    "name": "雷电拳",
+    "description": "用雷电缠绕的拳头击打对手",
+    "type": "electric",
+    "category": "physical",
+    "power": 75,
+    "accuracy": 100,
+    "effects": [{"type": "paralysis", "chance": 10}]
+  },
+  "闪电链": {
+    "name": "闪电链",
+    "description": "释放连锁闪电攻击",
+    "type": "electric",
+    "category": "special",
+    "power": 70,
+    "accuracy": 100,
+    "effects": [{"type": "paralysis", "chance": 20}]
+  },
+  "冥想": {
+    "name": "冥想",
+    "description": "静心冥想，提升特攻和特防",
+    "type": "normal",
+    "category": "status",
+    "power": 0,
+    "accuracy": 100,
+    "effects": [
+      {"type": "sp_attack_up", "value": 20, "duration": 3},
+      {"type": "sp_defense_up", "value": 20, "duration": 3}
+    ]
+  },
+  "铁壁": {
+    "name": "铁壁",
+    "description": "硬化身体，大幅提升防御",
+    "type": "normal",
+    "category": "status",
+    "power": 0,
+    "accuracy": 100,
+    "effects": [{"type": "defense_up", "value": 40, "duration": 3}]
+  },
+  "觉醒之力": {
+    "name": "觉醒之力",
+    "description": "释放自身潜能攻击",
+    "type": "normal",
+    "category": "special",
+    "power": 60,
+    "accuracy": 100,
+    "effects": []
+  },
+  "龙息": {
+    "name": "龙息",
+    "description": "喷出神秘的龙之气息",
+    "type": "fire",
+    "category": "special",
+    "power": 60,
+    "accuracy": 100,
+    "effects": [{"type": "paralysis", "chance": 30}]
   }
 }
