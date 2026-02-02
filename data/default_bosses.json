@@ -17,7 +17,11 @@
       "exp": 500,
       "coins": 300,
       "diamonds": 5,
-      "items": ["精灵球"]
+      "drops": [
+        {"item_id": "精灵球", "amount": 2, "chance": 1.0},
+        {"item_id": "治疗药水", "amount": 3, "chance": 0.8},
+        {"item_id": "神秘碎片", "amount": 1, "chance": 0.3}
+      ]
     }
   },
   "炎龙之王": {
@@ -38,7 +42,12 @@
       "exp": 1200,
       "coins": 800,
       "diamonds": 15,
-      "items": ["高级精灵球", "火之石"]
+      "drops": [
+        {"item_id": "高级精灵球", "amount": 2, "chance": 1.0},
+        {"item_id": "火之石", "amount": 1, "chance": 0.5},
+        {"item_id": "高级药水", "amount": 3, "chance": 0.8},
+        {"item_id": "神秘碎片", "amount": 2, "chance": 0.4}
+      ]
     }
   },
   "深海霸主": {
@@ -59,7 +68,13 @@
       "exp": 2000,
       "coins": 1200,
       "diamonds": 25,
-      "items": ["高级精灵球", "水之石", "神秘碎片"]
+      "drops": [
+        {"item_id": "高级精灵球", "amount": 3, "chance": 1.0},
+        {"item_id": "水之石", "amount": 1, "chance": 0.6},
+        {"item_id": "冰之石", "amount": 1, "chance": 0.3},
+        {"item_id": "全满药水", "amount": 2, "chance": 0.7},
+        {"item_id": "神秘碎片", "amount": 3, "chance": 0.5}
+      ]
     }
   },
   "雷神": {
@@ -80,7 +95,14 @@
       "exp": 3000,
       "coins": 2000,
       "diamonds": 40,
-      "items": ["大师球", "雷之石", "神秘碎片"]
+      "drops": [
+        {"item_id": "大师球", "amount": 1, "chance": 0.5},
+        {"item_id": "雷之石", "amount": 1, "chance": 0.7},
+        {"item_id": "光之石", "amount": 1, "chance": 0.3},
+        {"item_id": "全满药水", "amount": 3, "chance": 0.9},
+        {"item_id": "神秘碎片", "amount": 5, "chance": 0.6},
+        {"item_id": "经验糖果L", "amount": 2, "chance": 0.5}
+      ]
     }
   },
   "深渊领主": {
@@ -101,7 +123,14 @@
       "exp": 5000,
       "coins": 3500,
       "diamonds": 80,
-      "items": ["大师球", "暗之石", "传说碎片"]
+      "drops": [
+        {"item_id": "大师球", "amount": 1, "chance": 0.8},
+        {"item_id": "暗之石", "amount": 1, "chance": 0.9},
+        {"item_id": "传说碎片", "amount": 3, "chance": 0.7},
+        {"item_id": "全满药水", "amount": 5, "chance": 1.0},
+        {"item_id": "经验糖果XL", "amount": 1, "chance": 0.5},
+        {"item_id": "满复活药", "amount": 2, "chance": 0.6}
+      ]
     }
   }
 }

@@ -1324,6 +1324,9 @@ function showBossModal(bossId = null) {
                     <input type="number" name="reward_diamonds" value="10" min="0">
                 </div>
             </div>
+            
+            <h4 style="margin: 20px 0 16px;">物品掉落 <button type="button" class="btn btn-secondary btn-small" onclick="addBossDropItem()">+ 添加物品</button></h4>
+            <div id="boss-drop-items-container"></div>
         </form>
     `;
 
@@ -1360,6 +1363,9 @@ async function loadBossData(bossId) {
 
                 // 新增：保存原始ID
                 form.dataset.originalId = boss.id;
+                
+                // 加载物品掉落
+                loadBossDropItems(boss.rewards?.drops || []);
             }
         }
     } catch (error) {
@@ -1392,7 +1398,8 @@ async function saveBoss(isEdit) {
         rewards: {
             coins: parseInt(formData.get('reward_coins')) || 500,
             exp: parseInt(formData.get('reward_exp')) || 200,
-            diamonds: parseInt(formData.get('reward_diamonds')) || 10
+            diamonds: parseInt(formData.get('reward_diamonds')) || 10,
+            drops: collectBossDropItems()
         }
     };
     try {
@@ -1419,6 +1426,64 @@ async function saveBoss(isEdit) {
 function editBoss(bossId) {
     showBossModal(bossId);
 }
+
+// Boss物品掉落相关函数
+function addBossDropItem(item = null) {
+    const container = document.getElementById('boss-drop-items-container');
+    const index = container.children.length;
+    
+    const itemHtml = `
+        <div class="boss-drop-item" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px; padding: 10px; background: var(--bg-secondary); border-radius: 8px;">
+            <div class="form-group" style="flex: 2; margin: 0;">
+                <label>物品名称</label>
+                <input type="text" class="drop-item-id" value="${item?.item_id || ''}" placeholder="如：高级精灵球">
+            </div>
+            <div class="form-group" style="flex: 1; margin: 0;">
+                <label>数量</label>
+                <input type="number" class="drop-item-amount" value="${item?.amount || 1}" min="1" max="99">
+            </div>
+            <div class="form-group" style="flex: 1; margin: 0;">
+                <label>掉落率 %</label>
+                <input type="number" class="drop-item-chance" value="${item?.chance ? (item.chance * 100) : 100}" min="1" max="100">
+            </div>
+            <button type="button" class="btn btn-danger btn-small" onclick="this.parentElement.remove()" style="margin-top: 20px;">删除</button>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', itemHtml);
+}
+
+function collectBossDropItems() {
+    const container = document.getElementById('boss-drop-items-container');
+    const items = [];
+    
+    container.querySelectorAll('.boss-drop-item').forEach(itemEl => {
+        const itemId = itemEl.querySelector('.drop-item-id').value.trim();
+        const amount = parseInt(itemEl.querySelector('.drop-item-amount').value) || 1;
+        const chance = (parseFloat(itemEl.querySelector('.drop-item-chance').value) || 100) / 100;
+        
+        if (itemId) {
+            items.push({
+                item_id: itemId,
+                amount: amount,
+                chance: Math.min(1, Math.max(0.01, chance))  // 1% - 100%
+            });
+        }
+    });
+    
+    return items;
+}
+
+function loadBossDropItems(drops) {
+    const container = document.getElementById('boss-drop-items-container');
+    container.innerHTML = '';
+    
+    if (drops && Array.isArray(drops)) {
+        drops.forEach(drop => {
+            addBossDropItem(drop);
+        });
+    }
+}
+
 
 async function deleteBoss(bossId) {
     if (!confirm(`确定要删除BOSS "${bossId}" 吗？`)) {
