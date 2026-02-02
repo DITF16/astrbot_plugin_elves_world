@@ -503,6 +503,793 @@
       "diamonds_min": 50,
       "diamonds_max": 100
     }
+  },
+
+  "速度球": {
+    "id": "速度球",
+    "name": "速度球",
+    "description": "战斗开始前3回合使用，捕捉率大幅提升",
+    "type": "capture",
+    "category": "ball",
+    "rarity": 3,
+    "price": 500,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 250,
+    "shop_available": true,
+    "max_stack": 50,
+    "effect": {
+      "capture_rate": 2.5,
+      "condition": "early_battle"
+    }
+  },
+  "重量球": {
+    "id": "重量球",
+    "name": "重量球",
+    "description": "对高等级精灵捕捉率更高",
+    "type": "capture",
+    "category": "ball",
+    "rarity": 3,
+    "price": 600,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 300,
+    "shop_available": true,
+    "max_stack": 50,
+    "effect": {
+      "capture_rate": 1.0,
+      "bonus_per_level": 0.05
+    }
+  },
+  "治愈球": {
+    "id": "治愈球",
+    "name": "治愈球",
+    "description": "捕捉后自动恢复精灵全部HP",
+    "type": "capture",
+    "category": "ball",
+    "rarity": 3,
+    "price": 80,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 30,
+    "effect": {
+      "capture_rate": 1.2,
+      "heal_after_capture": true
+    }
+  },
+  "暗影球": {
+    "id": "暗影球",
+    "name": "暗影球",
+    "description": "对暗属性精灵捕捉率极高，BOSS专属掉落",
+    "type": "capture",
+    "category": "ball",
+    "rarity": 5,
+    "price": 0,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 5000,
+    "shop_available": false,
+    "max_stack": 10,
+    "effect": {
+      "capture_rate": 3.0,
+      "element_bonus": "dark"
+    },
+    "obtain_method": "boss_drop"
+  },
+
+  "解毒剂": {
+    "id": "解毒剂",
+    "name": "解毒剂",
+    "description": "治疗精灵的中毒状态",
+    "type": "heal",
+    "category": "medicine",
+    "rarity": 1,
+    "price": 80,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 40,
+    "shop_available": true,
+    "max_stack": 99,
+    "effect": {
+      "cure_status": "poison"
+    }
+  },
+  "解冻剂": {
+    "id": "解冻剂",
+    "name": "解冻剂",
+    "description": "治疗精灵的冰冻状态",
+    "type": "heal",
+    "category": "medicine",
+    "rarity": 1,
+    "price": 80,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 40,
+    "shop_available": true,
+    "max_stack": 99,
+    "effect": {
+      "cure_status": "frozen"
+    }
+  },
+  "灼伤膏": {
+    "id": "灼伤膏",
+    "name": "灼伤膏",
+    "description": "治疗精灵的灼伤状态",
+    "type": "heal",
+    "category": "medicine",
+    "rarity": 1,
+    "price": 80,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 40,
+    "shop_available": true,
+    "max_stack": 99,
+    "effect": {
+      "cure_status": "burn"
+    }
+  },
+  "麻痹治愈": {
+    "id": "麻痹治愈",
+    "name": "麻痹治愈",
+    "description": "治疗精灵的麻痹状态",
+    "type": "heal",
+    "category": "medicine",
+    "rarity": 1,
+    "price": 80,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 40,
+    "shop_available": true,
+    "max_stack": 99,
+    "effect": {
+      "cure_status": "paralysis"
+    }
+  },
+  "万能药": {
+    "id": "万能药",
+    "name": "万能药",
+    "description": "治疗精灵的所有异常状态",
+    "type": "heal",
+    "category": "medicine",
+    "rarity": 3,
+    "price": 300,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 150,
+    "shop_available": true,
+    "max_stack": 50,
+    "effect": {
+      "cure_status": "all"
+    }
+  },
+  "活力饮料": {
+    "id": "活力饮料",
+    "name": "活力饮料",
+    "description": "恢复150HP并治疗所有异常状态",
+    "type": "heal",
+    "category": "medicine",
+    "rarity": 4,
+    "price": 120,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 30,
+    "effect": {
+      "heal_hp": 150,
+      "cure_status": "all"
+    }
+  },
+
+  "攻击强化剂": {
+    "id": "攻击强化剂",
+    "name": "攻击强化剂",
+    "description": "战斗中使用，本场战斗攻击力提升30%",
+    "type": "buff",
+    "category": "consumable",
+    "rarity": 2,
+    "price": 300,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 150,
+    "shop_available": true,
+    "max_stack": 50,
+    "effect": {
+      "battle_buff": "attack",
+      "buff_percent": 30
+    }
+  },
+  "防御强化剂": {
+    "id": "防御强化剂",
+    "name": "防御强化剂",
+    "description": "战斗中使用，本场战斗防御力提升30%",
+    "type": "buff",
+    "category": "consumable",
+    "rarity": 2,
+    "price": 300,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 150,
+    "shop_available": true,
+    "max_stack": 50,
+    "effect": {
+      "battle_buff": "defense",
+      "buff_percent": 30
+    }
+  },
+  "速度强化剂": {
+    "id": "速度强化剂",
+    "name": "速度强化剂",
+    "description": "战斗中使用，本场战斗速度提升30%",
+    "type": "buff",
+    "category": "consumable",
+    "rarity": 2,
+    "price": 300,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 150,
+    "shop_available": true,
+    "max_stack": 50,
+    "effect": {
+      "battle_buff": "speed",
+      "buff_percent": 30
+    }
+  },
+  "全能强化剂": {
+    "id": "全能强化剂",
+    "name": "全能强化剂",
+    "description": "战斗中使用，所有属性提升20%",
+    "type": "buff",
+    "category": "consumable",
+    "rarity": 4,
+    "price": 150,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 20,
+    "effect": {
+      "battle_buff": "all",
+      "buff_percent": 20
+    }
+  },
+  "暴击药剂": {
+    "id": "暴击药剂",
+    "name": "暴击药剂",
+    "description": "战斗中使用，暴击率提升50%，持续整场战斗",
+    "type": "buff",
+    "category": "consumable",
+    "rarity": 3,
+    "price": 500,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 250,
+    "shop_available": true,
+    "max_stack": 30,
+    "effect": {
+      "battle_buff": "crit_rate",
+      "buff_percent": 50
+    }
+  },
+
+  "龙之鳞片": {
+    "id": "龙之鳞片",
+    "name": "龙之鳞片",
+    "description": "从远古巨龙身上剥落的神秘鳞片，大幅提升防御力。只能从BOSS获得",
+    "type": "material",
+    "category": "accessory",
+    "rarity": 5,
+    "price": 0,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 10000,
+    "shop_available": false,
+    "max_stack": 5,
+    "effect": {
+      "defense_boost": 50,
+      "fire_resist": 30
+    },
+    "obtain_method": "boss_drop",
+    "boss_source": "炎龙王"
+  },
+  "凤凰羽毛": {
+    "id": "凤凰羽毛",
+    "name": "凤凰羽毛",
+    "description": "不死鸟的神圣羽毛，战斗中有几率复活一次。只能从BOSS获得",
+    "type": "material",
+    "category": "accessory",
+    "rarity": 5,
+    "price": 0,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 15000,
+    "shop_available": false,
+    "max_stack": 3,
+    "effect": {
+      "revive_chance": 20,
+      "hp_boost_percent": 15
+    },
+    "obtain_method": "boss_drop",
+    "boss_source": "涅槃凤凰"
+  },
+  "深渊之心": {
+    "id": "深渊之心",
+    "name": "深渊之心",
+    "description": "来自深海巨兽的核心，赋予强大的暗属性力量。只能从BOSS获得",
+    "type": "material",
+    "category": "accessory",
+    "rarity": 5,
+    "price": 0,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 12000,
+    "shop_available": false,
+    "max_stack": 5,
+    "effect": {
+      "attack_boost": 40,
+      "dark_damage_bonus": 25
+    },
+    "obtain_method": "boss_drop",
+    "boss_source": "深渊海魔"
+  },
+  "雷神之锤碎片": {
+    "id": "雷神之锤碎片",
+    "name": "雷神之锤碎片",
+    "description": "传说中雷神兵器的碎片，攻击时有几率触发雷击。只能从BOSS获得",
+    "type": "material",
+    "category": "accessory",
+    "rarity": 5,
+    "price": 0,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 12000,
+    "shop_available": false,
+    "max_stack": 5,
+    "effect": {
+      "attack_boost": 35,
+      "thunder_proc_chance": 15,
+      "thunder_damage": 80
+    },
+    "obtain_method": "boss_drop",
+    "boss_source": "雷霆巨人"
+  },
+  "世界树之叶": {
+    "id": "世界树之叶",
+    "name": "世界树之叶",
+    "description": "从世界树上落下的神圣树叶，具有强大治愈之力。只能从BOSS获得",
+    "type": "material",
+    "category": "accessory",
+    "rarity": 5,
+    "price": 0,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 20000,
+    "shop_available": false,
+    "max_stack": 3,
+    "effect": {
+      "hp_regen_per_turn": 5,
+      "all_heal_bonus": 30
+    },
+    "obtain_method": "boss_drop",
+    "boss_source": "森林守护者"
+  },
+  "混沌宝珠": {
+    "id": "混沌宝珠",
+    "name": "混沌宝珠",
+    "description": "蕴含混沌之力的神秘宝珠，所有属性大幅提升。终极BOSS专属掉落",
+    "type": "material",
+    "category": "accessory",
+    "rarity": 5,
+    "price": 0,
+    "currency": "coins",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": false,
+    "max_stack": 1,
+    "effect": {
+      "all_stats_boost": 25,
+      "crit_rate_boost": 10,
+      "crit_damage_boost": 20
+    },
+    "obtain_method": "boss_drop",
+    "boss_source": "混沌之主"
+  },
+  "时空碎片": {
+    "id": "时空碎片",
+    "name": "时空碎片",
+    "description": "扭曲时空的神秘碎片，战斗中有几率让敌人行动失败。终极BOSS专属掉落",
+    "type": "material",
+    "category": "accessory",
+    "rarity": 5,
+    "price": 0,
+    "currency": "coins",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": false,
+    "max_stack": 1,
+    "effect": {
+      "enemy_skip_turn_chance": 10,
+      "speed_boost": 30
+    },
+    "obtain_method": "boss_drop",
+    "boss_source": "时空裂隙守卫"
+  },
+  "神圣精灵球": {
+    "id": "神圣精灵球",
+    "name": "神圣精灵球",
+    "description": "注入神圣之力的精灵球，对传说精灵捕捉率极高",
+    "type": "capture",
+    "category": "ball",
+    "rarity": 5,
+    "price": 300,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 10,
+    "effect": {
+      "capture_rate": 2.0,
+      "legendary_bonus": 3.0
+    }
+  },
+  "VIP体力药水": {
+    "id": "VIP体力药水",
+    "name": "VIP体力药水",
+    "description": "完全恢复体力并额外增加20点上限（持续24小时）",
+    "type": "stamina",
+    "category": "medicine",
+    "rarity": 4,
+    "price": 200,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 10,
+    "effect": {
+      "restore_stamina": 9999,
+      "bonus_max_stamina": 20,
+      "bonus_duration_hours": 24
+    }
+  },
+  "超级幸运符": {
+    "id": "超级幸运符",
+    "name": "超级幸运符",
+    "description": "使用后2小时内，捕捉率提升100%，稀有精灵遇见率提升50%",
+    "type": "buff",
+    "category": "consumable",
+    "rarity": 4,
+    "price": 250,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 10,
+    "effect": {
+      "buff_type": "catch_rate",
+      "buff_value": 2.0,
+      "rare_encounter_bonus": 1.5,
+      "duration_minutes": 120
+    }
+  },
+  "双倍经验卡": {
+    "id": "双倍经验卡",
+    "name": "双倍经验卡",
+    "description": "使用后24小时内，所有经验获取翻倍",
+    "type": "buff",
+    "category": "consumable",
+    "rarity": 4,
+    "price": 300,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 10,
+    "effect": {
+      "buff_type": "exp_rate",
+      "buff_value": 2.0,
+      "duration_minutes": 1440
+    }
+  },
+  "属性重置药剂": {
+    "id": "属性重置药剂",
+    "name": "属性重置药剂",
+    "description": "重置精灵的个体值，有几率获得更好的数值",
+    "type": "special",
+    "category": "consumable",
+    "rarity": 5,
+    "price": 500,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 5,
+    "effect": {
+      "reset_iv": true,
+      "iv_boost_chance": 30
+    }
+  },
+  "技能遗忘药": {
+    "id": "技能遗忘药",
+    "name": "技能遗忘药",
+    "description": "让精灵遗忘一个技能，腾出技能槽位",
+    "type": "special",
+    "category": "consumable",
+    "rarity": 3,
+    "price": 80,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 20,
+    "effect": {
+      "forget_skill": true
+    }
+  },
+  "技能学习器": {
+    "id": "技能学习器",
+    "name": "技能学习器",
+    "description": "让精灵学习一个随机适合的新技能",
+    "type": "special",
+    "category": "consumable",
+    "rarity": 4,
+    "price": 200,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 10,
+    "effect": {
+      "learn_random_skill": true
+    }
+  },
+  "精灵之尘": {
+    "id": "精灵之尘",
+    "name": "精灵之尘",
+    "description": "精灵留下的神秘粉尘，是各种合成的基础材料",
+    "type": "material",
+    "category": "material",
+    "rarity": 1,
+    "price": 50,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 25,
+    "shop_available": true,
+    "max_stack": 999,
+    "effect": {}
+  },
+  "魔力结晶": {
+    "id": "魔力结晶",
+    "name": "魔力结晶",
+    "description": "浓缩的魔力形成的结晶，可用于强化装备",
+    "type": "material",
+    "category": "material",
+    "rarity": 2,
+    "price": 200,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 100,
+    "shop_available": true,
+    "max_stack": 999,
+    "effect": {}
+  },
+  "远古符文": {
+    "id": "远古符文",
+    "name": "远古符文",
+    "description": "刻有远古文字的神秘符文，蕴含强大力量",
+    "type": "material",
+    "category": "material",
+    "rarity": 4,
+    "price": 0,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 2000,
+    "shop_available": false,
+    "max_stack": 99,
+    "effect": {},
+    "obtain_method": "exploration_rare"
+  },
+  "龙之精华": {
+    "id": "龙之精华",
+    "name": "龙之精华",
+    "description": "从龙类精灵身上提取的精华，用于龙系进化",
+    "type": "material",
+    "category": "material",
+    "rarity": 4,
+    "price": 0,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 3000,
+    "shop_available": false,
+    "max_stack": 50,
+    "effect": {
+      "evolution_type": "dragon"
+    },
+    "obtain_method": "boss_drop"
+  },
+  "星辰之沙": {
+    "id": "星辰之沙",
+    "name": "星辰之沙",
+    "description": "从陨石中提取的神秘物质，可用于制作顶级装备",
+    "type": "material",
+    "category": "material",
+    "rarity": 5,
+    "price": 0,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 5000,
+    "shop_available": false,
+    "max_stack": 30,
+    "effect": {},
+    "obtain_method": "boss_drop"
+  },
+  "新手大礼包": {
+    "id": "新手大礼包",
+    "name": "新手大礼包",
+    "description": "包含10个精灵球、5个治疗药水、1000金币，每个账号限领一次",
+    "type": "gift",
+    "category": "gift",
+    "rarity": 3,
+    "price": 0,
+    "currency": "coins",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": false,
+    "max_stack": 1,
+    "effect": {
+      "items": {
+        "精灵球": 10,
+        "治疗药水": 5
+      },
+      "coins": 1000
+    },
+    "obtain_method": "newbie_reward"
+  },
+  "每日签到宝箱": {
+    "id": "每日签到宝箱",
+    "name": "每日签到宝箱",
+    "description": "每日签到获得，随机获得各种道具",
+    "type": "gift",
+    "category": "gift",
+    "rarity": 2,
+    "price": 0,
+    "currency": "coins",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": false,
+    "max_stack": 7,
+    "effect": {
+      "random_items": true,
+      "possible_items": ["精灵球", "治疗药水", "经验糖果S", "精灵之尘"],
+      "coins_min": 100,
+      "coins_max": 500
+    },
+    "obtain_method": "daily_checkin"
+  },
+  "精英挑战礼包": {
+    "id": "精英挑战礼包",
+    "name": "精英挑战礼包",
+    "description": "完成精英挑战获得，包含珍贵奖励",
+    "type": "gift",
+    "category": "gift",
+    "rarity": 4,
+    "price": 0,
+    "currency": "coins",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": false,
+    "max_stack": 10,
+    "effect": {
+      "random_items": true,
+      "possible_items": ["高级精灵球", "高级药水", "经验糖果M", "神秘碎片"],
+      "diamonds_min": 10,
+      "diamonds_max": 30
+    },
+    "obtain_method": "elite_challenge"
+  },
+  "传说宝箱": {
+    "id": "传说宝箱",
+    "name": "传说宝箱",
+    "description": "击败传说BOSS后获得，必定包含稀有物品",
+    "type": "gift",
+    "category": "gift",
+    "rarity": 5,
+    "price": 0,
+    "currency": "coins",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": false,
+    "max_stack": 5,
+    "effect": {
+      "guaranteed_rare": true,
+      "possible_items": ["大师球", "传说碎片", "经验糖果XL"],
+      "diamonds_min": 50,
+      "diamonds_max": 100
+    },
+    "obtain_method": "legendary_boss"
+  },
+  "钻石月卡": {
+    "id": "钻石月卡",
+    "name": "钻石月卡",
+    "description": "激活后每天可领取30钻石，持续30天",
+    "type": "subscription",
+    "category": "gift",
+    "rarity": 4,
+    "price": 300,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 1,
+    "effect": {
+      "daily_diamonds": 30,
+      "duration_days": 30
+    }
+  },
+  "豪华补给箱": {
+    "id": "豪华补给箱",
+    "name": "豪华补给箱",
+    "description": "包含大量实用道具的豪华礼包",
+    "type": "gift",
+    "category": "gift",
+    "rarity": 4,
+    "price": 500,
+    "currency": "diamonds",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": true,
+    "max_stack": 10,
+    "effect": {
+      "items": {
+        "高级精灵球": 20,
+        "全满药水": 10,
+        "复活药": 10,
+        "经验糖果L": 5
+      },
+      "coins": 10000
+    }
+  },
+  "春节福袋": {
+    "id": "春节福袋",
+    "name": "春节福袋",
+    "description": "春节限定福袋，打开获得丰厚奖励和限定红包",
+    "type": "gift",
+    "category": "gift",
+    "rarity": 4,
+    "price": 0,
+    "currency": "coins",
+    "sellable": false,
+    "sell_price": 0,
+    "shop_available": false,
+    "max_stack": 10,
+    "effect": {
+      "event_item": true,
+      "coins_min": 2888,
+      "coins_max": 8888,
+      "diamonds_min": 20,
+      "diamonds_max": 88
+    },
+    "obtain_method": "spring_festival_event"
+  },
+  "幸运四叶草": {
+    "id": "幸运四叶草",
+    "name": "幸运四叶草",
+    "description": "极其稀有的四叶草，持有时所有运气加成10%",
+    "type": "material",
+    "category": "accessory",
+    "rarity": 4,
+    "price": 0,
+    "currency": "coins",
+    "sellable": true,
+    "sell_price": 5000,
+    "shop_available": false,
+    "max_stack": 1,
+    "effect": {
+      "luck_boost": 10,
+      "rare_drop_bonus": 10
+    },
+    "obtain_method": "rare_exploration"
   }
 }
 
