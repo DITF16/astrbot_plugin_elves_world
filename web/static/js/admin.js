@@ -991,6 +991,38 @@ function renderSkillEffects(effects) {
 
 // ==================== 区域管理 ====================
 
+// 将解锁条件对象转换为可读字符串
+function formatUnlockRequires(unlockRequires) {
+    if (!unlockRequires) return '';
+    if (typeof unlockRequires === 'string') return unlockRequires;
+    
+    // 处理对象格式
+    if (unlockRequires.type === 'boss') {
+        return `boss:${unlockRequires.id}`;
+    } else if (unlockRequires.type === 'level') {
+        return `level:${unlockRequires.value}`;
+    }
+    return '';
+}
+
+// 将字符串解析为解锁条件对象
+function parseUnlockRequires(str) {
+    if (!str || str.trim() === '') return null;
+    
+    const parts = str.split(':');
+    if (parts.length !== 2) return null;
+    
+    const [type, value] = parts;
+    if (type === 'boss') {
+        return { type: 'boss', id: value };
+    } else if (type === 'level') {
+        return { type: 'level', value: parseInt(value) };
+    }
+    return null;
+}
+
+
+
 async function loadRegions() {
     try {
         const result = await api('/regions');
@@ -1024,6 +1056,7 @@ function renderRegionsTable(regions) {
             <td>Lv.${r.level_range?.[0] || 1} - ${r.level_range?.[1] || 10}</td>
             <td>⚡${r.stamina_cost || 10}</td>
             <td>${(r.wild_monsters || []).length}种</td>
+            <td>${formatUnlockRequires(r.unlock_requires) || '-'}</td>
             <td class="table-actions">
                 <button class="btn btn-secondary btn-small" onclick="editRegion('${r.id}')">编辑</button>
                 <button class="btn btn-danger btn-small" onclick="deleteRegion('${r.id}')">删除</button>
@@ -1110,7 +1143,7 @@ async function loadRegionData(regionId) {
                 form.querySelector('[name="level_max"]').value = region.level_range?.[1] || 10;
                 form.querySelector('[name="stamina_cost"]').value = region.stamina_cost || 10;
                 form.querySelector('[name="map_size"]').value = region.map_size || 'medium';
-                form.querySelector('[name="unlock_requires"]').value = region.unlock_requires || '';
+                form.querySelector('[name="unlock_requires"]').value = formatUnlockRequires(region.unlock_requires);
                 const wildMonsters = (region.wild_monsters || [])
                     .map(m => `${m.monster_id || m.id || m.name}:${m.weight || 10}`)
                     .join('\n');
@@ -1148,7 +1181,7 @@ async function saveRegion(isEdit) {
         ],
         stamina_cost: parseInt(formData.get('stamina_cost')) || 10,
         map_size: formData.get('map_size'),
-        unlock_requires: formData.get('unlock_requires') || null,
+        unlock_requires: parseUnlockRequires(formData.get('unlock_requires')),
         wild_monsters: wildMonsters,
         description: formData.get('description')
     };
