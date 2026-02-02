@@ -33,6 +33,7 @@
                 <a href="#" class="nav-item" data-page="skills">⚔️ 技能管理</a>
                 <a href="#" class="nav-item" data-page="regions">🗺️ 区域管理</a>
                 <a href="#" class="nav-item" data-page="bosses">👹 BOSS管理</a>
+                <a href="#" class="nav-item" data-page="items">🎁 物品管理</a>
                 <a href="#" class="nav-item" data-page="players">👥 玩家管理</a>
                 <div class="nav-divider"></div>
                 <a href="#" class="nav-item" data-page="natures">🎭 性格管理</a>
@@ -204,6 +205,54 @@
                                 </tr>
                             </thead>
                             <tbody id="bosses-table-body">
+                                <!-- 动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 物品管理 -->
+                <section id="items-section" class="section hidden">
+                    <div class="section-header">
+                        <h2>物品管理</h2>
+                        <button class="btn btn-primary" onclick="showItemModal()">+ 添加物品</button>
+                    </div>
+                    <p class="section-description">管理商店物品，包括精灵球、药水、进化石等。设置价格、货币类型和商店上架状态。</p>
+                    <div class="filter-bar">
+                        <select id="item-type-filter" onchange="filterItems()">
+                            <option value="">全部类型</option>
+                            <option value="capture">捕捉道具</option>
+                            <option value="heal">治疗药水</option>
+                            <option value="revive">复活道具</option>
+                            <option value="evolution">进化石</option>
+                            <option value="stamina">体力道具</option>
+                            <option value="exp">经验道具</option>
+                            <option value="buff">增益道具</option>
+                            <option value="tool">工具道具</option>
+                            <option value="gift">礼包</option>
+                            <option value="material">材料</option>
+                        </select>
+                        <select id="item-shop-filter" onchange="filterItems()">
+                            <option value="">全部状态</option>
+                            <option value="true">商店出售</option>
+                            <option value="false">不出售</option>
+                        </select>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>名称</th>
+                                    <th>类型</th>
+                                    <th>稀有度</th>
+                                    <th>价格</th>
+                                    <th>货币</th>
+                                    <th>商店</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-table-body">
                                 <!-- 动态填充 -->
                             </tbody>
                         </table>

@@ -234,10 +234,44 @@ class MonsterGamePlugin(Star):
         async for result in self.explore_handlers.cmd_leave(event):
             yield result
 
+    # ==================== 商店指令 ====================
+
+    @pm_group.command("商店")
+    async def cmd_shop(self, event: AstrMessageEvent, category: str = ""):
+        """查看商店"""
+        async for result in self.player_handlers.cmd_shop(event, category):
+            yield result
+
+    @pm_group.command("购买")
+    async def cmd_buy(self, event: AstrMessageEvent, item_name: str = "", amount: int = 1):
+        """购买物品"""
+        async for result in self.player_handlers.cmd_buy(event, item_name, amount):
+            yield result
+
+    @pm_group.command("出售")
+    async def cmd_sell(self, event: AstrMessageEvent, item_name: str = "", amount: int = 1):
+        """出售物品"""
+        async for result in self.player_handlers.cmd_sell(event, item_name, amount):
+            yield result
+
+    @pm_group.command("物品")
+    async def cmd_items(self, event: AstrMessageEvent):
+        """查看背包物品"""
+        async for result in self.player_handlers.cmd_items(event):
+            yield result
+
+    @pm_group.command("使用")
+    async def cmd_use_item(self, event: AstrMessageEvent, item_name: str = "", target: int = 1):
+        """使用物品"""
+        async for result in self.player_handlers.cmd_use_item(event, item_name, target):
+            yield result
+
     # ==================== 管理员指令 ====================
 
     @pm_group.command("重载配置")
     async def cmd_reload(self, event: AstrMessageEvent):
+        """重新加载游戏配置（管理员）"""
+
         """重新加载游戏配置（管理员）"""
         # TODO: 添加权限检查
         try:

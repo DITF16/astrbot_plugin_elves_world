@@ -265,3 +265,384 @@ class PlayerHandlers:
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"明天继续签到有惊喜哦~"
         )
+
+    # ==================== 商店系统 ====================
+
+    def _get_currency_icon(self, currency: str) -> str:
+        """获取货币图标"""
+        return "💎" if currency == "diamonds" else "💰"
+
+    def _get_item_type_name(self, item_type: str) -> str:
+        """获取物品类型名称"""
+        type_names = {
+            "capture": "捕捉", "heal": "治疗", "revive": "复活",
+            "evolution": "进化", "stamina": "体力", "exp": "经验",
+            "buff": "增益", "tool": "道具", "gift": "礼包", "material": "材料",
+        }
+        return type_names.get(item_type, "其他")
+
+    async def cmd_shop(self, event: AstrMessageEvent, category: str = ""):
+        """
+        查看商店
+        指令: /精灵 商店 [分类]
+        """
+        user_id = event.get_sender_id()
+        player = self.pm.get_player(user_id)
+        if not player:
+            yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
+            return
+
+        # 获取所有可购买物品
+        all_items = self.config.items
+        shop_items = {k: v for k, v in all_items.items() 
+                      if v.get("shop_available", False) and v.get("price", 0) > 0}
+
+        if not shop_items:
+            yield event.plain_result("🏪 商店暂时没有商品出售~")
+            return
+
+        # 分类筛选
+        category_map = {
+            "精灵球": "capture", "球": "capture", "药水": "heal", "治疗": "heal",
+            "复活": "revive", "进化石": "evolution", "进化": "evolution",
+            "体力": "stamina", "经验": "exp", "糖果": "exp",
+            "增益": "buff", "护符": "buff", "道具": "tool", "礼包": "gift",
+        }
+        filter_type = category_map.get(category, "")
+        if filter_type:
+            shop_items = {k: v for k, v in shop_items.items() if v.get("type") == filter_type}
+            if not shop_items:
+                yield event.plain_result(f"🏪 没有找到 [{category}] 类型的商品")
+                return
+
+        # 按货币类型分组
+        coins_items = [v for v in shop_items.values() if v.get("currency", "coins") == "coins"]
+        diamonds_items = [v for v in shop_items.values() if v.get("currency") == "diamonds"]
+
+        text = "🏪 精灵商店\n━━━━━━━━━━━━━━━━━━━━\n"
+        text += f"💰 金币: {player['coins']}  💎 钻石: {player['diamonds']}\n"
+        text += "━━━━━━━━━━━━━━━━━━━━\n"
+
+        if coins_items:
+            text += "\n💰 【金币商品】\n"
+            for item in sorted(coins_items, key=lambda x: x.get("price", 0)):
+                stars = "★" * item.get("rarity", 1)
+                text += f"  {stars} {item['name']} - 💰{item['price']}\n"
+
+        if diamonds_items:
+            text += "\n💎 【钻石商品】\n"
+            for item in sorted(diamonds_items, key=lambda x: x.get("price", 0)):
+                stars = "★" * item.get("rarity", 1)
+                text += f"  {stars} {item['name']} - 💎{item['price']}\n"
+
+        text += "\n━━━━━━━━━━━━━━━━━━━━\n"
+        text += "💡 购买: /精灵 购买 物品名 [数量]\n"
+        text += "💡 分类: 精灵球/药水/进化石/体力/经验/增益/道具/礼包"
+        yield event.plain_result(text)
+
+    async def cmd_buy(self, event: AstrMessageEvent, item_name: str = "", amount: int = 1):
+        """
+        购买物品
+        指令: /精灵 购买 物品名 [数量]
+        """
+        user_id = event.get_sender_id()
+        player = self.pm.get_player(user_id)
+        if not player:
+            yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
+            return
+
+        if not item_name:
+            yield event.plain_result("❌ 请指定要购买的物品\n用法: /精灵 购买 物品名 [数量]")
+            return
+
+        if amount < 1 or amount > 99:
+            yield event.plain_result("❌ 购买数量必须在1-99之间")
+            return
+
+        # 查找物品（支持模糊匹配）
+        item = self.config.get_item("items", item_name)
+        if not item:
+            for k, v in self.config.items.items():
+                if item_name in k or item_name in v.get("name", ""):
+                    item = v
+                    break
+
+        if not item:
+            yield event.plain_result(f"❌ 找不到物品: {item_name}")
+            return
+
+        if not item.get("shop_available", False) or item.get("price", 0) <= 0:
+            yield event.plain_result(f"❌ {item['name']} 不在商店出售")
+            return
+
+        currency = item.get("currency", "coins")
+        total_cost = item["price"] * amount
+
+        # 检查并扣除货币
+        if currency == "diamonds":
+            if player["diamonds"] < total_cost:
+                yield event.plain_result(f"❌ 钻石不足！需要💎{total_cost}，拥有💎{player['diamonds']}")
+                return
+            self.pm.spend_diamonds(user_id, total_cost)
+        else:
+            if player["coins"] < total_cost:
+                yield event.plain_result(f"❌ 金币不足！需要💰{total_cost}，拥有💰{player['coins']}")
+                return
+            self.pm.spend_coins(user_id, total_cost)
+
+        # 添加物品
+        new_count = self.pm.add_item(user_id, item["id"], amount)
+        icon = self._get_currency_icon(currency)
+        yield event.plain_result(
+            f"🛒 购买成功！\n━━━━━━━━━━━━━━━━━━━━\n"
+            f"物品: {item['name']} x{amount}\n"
+            f"花费: {icon}{total_cost}\n"
+            f"当前持有: {new_count}个"
+        )
+
+    async def cmd_sell(self, event: AstrMessageEvent, item_name: str = "", amount: int = 1):
+        """
+        出售物品
+        指令: /精灵 出售 物品名 [数量]
+        """
+        user_id = event.get_sender_id()
+        player = self.pm.get_player(user_id)
+        if not player:
+            yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
+            return
+
+        if not item_name:
+            yield event.plain_result("❌ 请指定要出售的物品\n用法: /精灵 出售 物品名 [数量]")
+            return
+
+        if amount < 1:
+            yield event.plain_result("❌ 出售数量必须大于0")
+            return
+
+        # 查找物品
+        item = self.config.get_item("items", item_name)
+        if not item:
+            for k, v in self.config.items.items():
+                if item_name in k or item_name in v.get("name", ""):
+                    item = v
+                    break
+
+        if not item:
+            yield event.plain_result(f"❌ 找不到物品: {item_name}")
+            return
+
+        if not item.get("sellable", False) or item.get("sell_price", 0) <= 0:
+            yield event.plain_result(f"❌ {item['name']} 无法出售")
+            return
+
+        # 检查背包
+        inventory = self.pm.get_inventory(user_id)
+        owned = inventory.get(item["id"], 0)
+        if owned < amount:
+            yield event.plain_result(f"❌ 物品不足！需要{amount}个，拥有{owned}个")
+            return
+
+        # 扣除物品，获得金币
+        self.pm.use_item(user_id, item["id"], amount)
+        total_earn = item["sell_price"] * amount
+        self.pm.add_currency(user_id, coins=total_earn)
+
+        yield event.plain_result(
+            f"💸 出售成功！\n━━━━━━━━━━━━━━━━━━━━\n"
+            f"物品: {item['name']} x{amount}\n"
+            f"获得: 💰{total_earn}\n"
+            f"剩余: {owned - amount}个"
+        )
+
+    async def cmd_items(self, event: AstrMessageEvent):
+        """
+        查看背包物品
+        指令: /精灵 物品
+        """
+        user_id = event.get_sender_id()
+        player = self.pm.get_player(user_id)
+        if not player:
+            yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
+            return
+
+        inventory = self.pm.get_inventory(user_id)
+        if not inventory:
+            yield event.plain_result("🎒 背包空空如也~\n去商店看看吧: /精灵 商店")
+            return
+
+        # 按类型分组
+        items_by_type = {}
+        for item_id, count in inventory.items():
+            if count <= 0:
+                continue
+            item = self.config.get_item("items", item_id)
+            if not item:
+                continue
+            item_type = item.get("type", "other")
+            if item_type not in items_by_type:
+                items_by_type[item_type] = []
+            items_by_type[item_type].append((item, count))
+
+        type_order = ["capture", "heal", "revive", "stamina", "exp", "evolution", "buff", "tool", "gift", "material"]
+        type_icons = {"capture": "🔮", "heal": "💊", "revive": "💖", "stamina": "⚡",
+                      "exp": "🍬", "evolution": "💎", "buff": "✨", "tool": "🔧", "gift": "🎁", "material": "🧩"}
+
+        text = "🎒 我的背包\n━━━━━━━━━━━━━━━━━━━━\n"
+        text += f"💰 金币: {player['coins']}  💎 钻石: {player['diamonds']}\n"
+        text += "━━━━━━━━━━━━━━━━━━━━"
+
+        for item_type in type_order:
+            if item_type not in items_by_type:
+                continue
+            items = items_by_type[item_type]
+            icon = type_icons.get(item_type, "📦")
+            type_name = self._get_item_type_name(item_type)
+            text += f"\n\n{icon} 【{type_name}】\n"
+            for item, count in sorted(items, key=lambda x: x[0].get("rarity", 1), reverse=True):
+                text += f"  {item['name']} x{count}\n"
+
+        text += "\n━━━━━━━━━━━━━━━━━━━━\n"
+        text += "💡 使用: /精灵 使用 物品名 [精灵序号]\n"
+        text += "💡 出售: /精灵 出售 物品名 [数量]"
+        yield event.plain_result(text)
+
+    async def cmd_use_item(self, event: AstrMessageEvent, item_name: str = "", target: int = 1):
+        """
+        使用物品
+        指令: /精灵 使用 物品名 [目标精灵序号]
+        """
+        user_id = event.get_sender_id()
+        player = self.pm.get_player(user_id)
+        if not player:
+            yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
+            return
+
+        if not item_name:
+            yield event.plain_result("❌ 请指定要使用的物品\n用法: /精灵 使用 物品名 [精灵序号]")
+            return
+
+        # 查找物品
+        item = self.config.get_item("items", item_name)
+        if not item:
+            for k, v in self.config.items.items():
+                if item_name in k or item_name in v.get("name", ""):
+                    item = v
+                    break
+
+        if not item:
+            yield event.plain_result(f"❌ 找不到物品: {item_name}")
+            return
+
+        if not self.pm.has_item(user_id, item["id"]):
+            yield event.plain_result(f"❌ 你没有 {item['name']}")
+            return
+
+        item_type = item.get("type", "")
+        effect = item.get("effect", {})
+
+        # 治疗药水
+        if item_type == "heal":
+            monsters = self.pm.get_monsters(user_id)
+            if not monsters:
+                yield event.plain_result("❌ 你还没有精灵")
+                return
+            if target < 1 or target > len(monsters):
+                yield event.plain_result(f"❌ 请指定正确的精灵序号 (1-{len(monsters)})")
+                return
+
+            monster = monsters[target - 1]
+            max_hp = monster["stats"]["hp"]
+            if monster["current_hp"] >= max_hp:
+                yield event.plain_result(f"❌ {monster.get('nickname') or monster['name']} HP已满")
+                return
+
+            self.pm.use_item(user_id, item["id"])
+            heal_amount = effect.get("heal_hp", 30)
+            old_hp = monster["current_hp"]
+            new_hp = min(old_hp + heal_amount, max_hp)
+            monster["current_hp"] = new_hp
+            self.pm.update_monster_from_dict(monster["instance_id"], monster)
+
+            yield event.plain_result(
+                f"💊 使用了 {item['name']}！\n"
+                f"{monster.get('nickname') or monster['name']} HP: {old_hp} → {new_hp}"
+            )
+
+        # 体力药水
+        elif item_type == "stamina":
+            self.pm.use_item(user_id, item["id"])
+            restore = effect.get("restore_stamina", 30)
+            new_stamina = self.pm.restore_stamina(user_id, restore)
+            yield event.plain_result(
+                f"⚡ 使用了 {item['name']}！\n"
+                f"体力恢复了 {restore} 点，当前: {new_stamina}/{player.get('max_stamina', 100)}"
+            )
+
+        # 经验糖果
+        elif item_type == "exp":
+            monsters = self.pm.get_monsters(user_id)
+            if not monsters:
+                yield event.plain_result("❌ 你还没有精灵")
+                return
+            if target < 1 or target > len(monsters):
+                yield event.plain_result(f"❌ 请指定正确的精灵序号 (1-{len(monsters)})")
+                return
+
+            monster = monsters[target - 1]
+            self.pm.use_item(user_id, item["id"])
+            exp_amount = effect.get("give_exp", 100)
+
+            from ..core import MonsterInstance
+            monster_inst = MonsterInstance.from_dict(monster, self.config)
+            result = monster_inst.add_exp(exp_amount, self.config)
+            self.pm.update_monster(monster_inst)
+
+            text = f"🍬 使用了 {item['name']}！\n"
+            text += f"{monster_inst.get_display_name()} 获得了 {exp_amount} 经验"
+            if result.get("leveled_up"):
+                text += f"\n🎉 升级了！Lv.{result['old_level']} → Lv.{result['new_level']}"
+            yield event.plain_result(text)
+
+        # 礼包
+        elif item_type == "gift":
+            self.pm.use_item(user_id, item["id"])
+            min_d = effect.get("diamonds_min", 10)
+            max_d = effect.get("diamonds_max", 30)
+            diamonds = random.randint(min_d, max_d)
+            self.pm.add_currency(user_id, diamonds=diamonds)
+            yield event.plain_result(f"🎁 打开了 {item['name']}！\n获得了 💎{diamonds} 钻石！")
+
+        # 复活药
+        elif item_type == "revive":
+            monsters = self.pm.get_monsters(user_id)
+            if not monsters:
+                yield event.plain_result("❌ 你还没有精灵")
+                return
+            if target < 1 or target > len(monsters):
+                yield event.plain_result(f"❌ 请指定正确的精灵序号 (1-{len(monsters)})")
+                return
+
+            monster = monsters[target - 1]
+            if monster["current_hp"] > 0:
+                yield event.plain_result(f"❌ {monster.get('nickname') or monster['name']} 还活着，不需要复活")
+                return
+
+            self.pm.use_item(user_id, item["id"])
+            heal_percent = effect.get("heal_percent", 50)
+            max_hp = monster["stats"]["hp"]
+            new_hp = max(1, int(max_hp * heal_percent / 100))
+            monster["current_hp"] = new_hp
+            monster["status"] = "normal"
+            self.pm.update_monster_from_dict(monster["instance_id"], monster)
+
+            yield event.plain_result(
+                f"💖 使用了 {item['name']}！\n"
+                f"{monster.get('nickname') or monster['name']} 复活了！HP: {new_hp}/{max_hp}"
+            )
+
+        else:
+            yield event.plain_result(
+                f"❌ {item['name']} 暂时无法在背包中直接使用\n"
+                f"(部分物品需要在特定场景使用，如战斗中)"
+            )
+

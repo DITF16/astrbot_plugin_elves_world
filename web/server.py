@@ -441,6 +441,109 @@ class WebServer:
             self.config.delete_item("bosses", id)
             return JSONResponse({"success": True, "message": "删除成功"})
 
+        # ==================== 物品管理API ====================
+
+        @app.get("/api/items")
+        async def get_items(request: Request):
+            """获取所有物品"""
+            if not self._check_auth(request):
+                raise HTTPException(status_code=401, detail="未授权")
+
+            items = self.config.items
+            return JSONResponse({
+                "success": True,
+                "data": list(items.values()),
+                "total": len(items)
+            })
+
+        @app.get("/api/items/detail")
+        async def get_item(request: Request, id: str = None):
+            """获取单个物品详情"""
+            if not self._check_auth(request):
+                raise HTTPException(status_code=401, detail="未授权")
+
+            if not id:
+                raise HTTPException(status_code=400, detail="缺少id参数")
+
+            item = self.config.get_item("items", id)
+            if not item:
+                raise HTTPException(status_code=404, detail="物品不存在")
+            return JSONResponse({"success": True, "data": item})
+
+        @app.post("/api/items")
+        async def create_item(request: Request):
+            """创建物品"""
+            if not self._check_auth(request):
+                raise HTTPException(status_code=401, detail="未授权")
+
+            try:
+                data = await request.json()
+                item_id = data.get("id")
+
+                if not item_id:
+                    return JSONResponse({"success": False, "message": "缺少ID"}, status_code=400)
+
+                if item_id in self.config.items:
+                    return JSONResponse({"success": False, "message": "物品ID已存在"}, status_code=400)
+
+                # 确保必要字段
+                data.setdefault("name", item_id)
+                data.setdefault("type", "tool")
+                data.setdefault("rarity", 1)
+                data.setdefault("price", 0)
+                data.setdefault("currency", "coins")
+                data.setdefault("shop_available", False)
+                data.setdefault("sellable", False)
+                data.setdefault("sell_price", 0)
+                data.setdefault("effect", {})
+
+                self.config.items[item_id] = data
+                self.config.save_config("items")
+
+                return JSONResponse({"success": True, "message": "物品已创建"})
+            except Exception as e:
+                logger.error(f"创建物品失败: {e}")
+                return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+        @app.put("/api/items/update")
+        async def update_item(request: Request):
+            """更新物品"""
+            if not self._check_auth(request):
+                raise HTTPException(status_code=401, detail="未授权")
+
+            try:
+                data = await request.json()
+                item_id = data.get("id")
+
+                if not item_id or item_id not in self.config.items:
+                    return JSONResponse({"success": False, "message": "物品不存在"}, status_code=404)
+
+                # 更新物品数据
+                self.config.items[item_id].update(data)
+                self.config.save_config("items")
+
+                return JSONResponse({"success": True, "message": "物品已更新"})
+            except Exception as e:
+                logger.error(f"更新物品失败: {e}")
+                return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+        @app.delete("/api/items")
+        async def delete_item(request: Request, id: str = None):
+            """删除物品"""
+            if not self._check_auth(request):
+                raise HTTPException(status_code=401, detail="未授权")
+
+            if not id:
+                raise HTTPException(status_code=400, detail="缺少id参数")
+
+            if id not in self.config.items:
+                return JSONResponse({"success": False, "message": "物品不存在"}, status_code=404)
+
+            del self.config.items[id]
+            self.config.save_config("items")
+
+            return JSONResponse({"success": True, "message": "物品已删除"})
+
         # ==================== 玩家管理API ====================
 
         @app.get("/api/players")

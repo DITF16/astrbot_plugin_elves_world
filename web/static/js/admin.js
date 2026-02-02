@@ -253,6 +253,7 @@ function switchPage(pageName) {
         skills: '技能管理',
         regions: '区域管理',
         bosses: 'BOSS管理',
+        items: '物品管理',
         players: '玩家管理',
         natures: '性格管理',
         types: '属性配置',
@@ -283,6 +284,9 @@ function loadPageData(pageName) {
             break;
         case 'bosses':
             loadBosses();
+            break;
+        case 'items':
+            loadItems();
             break;
         case 'players':
             loadPlayers();
@@ -1430,6 +1434,292 @@ async function deleteBoss(bossId) {
         }
     } catch (error) {
         showToast('删除失败', 'error');
+    }
+}
+
+// ==================== 物品管理 ====================
+
+// 物品类型映射
+const itemTypeNames = {
+    capture: '捕捉', heal: '治疗', revive: '复活', evolution: '进化',
+    stamina: '体力', exp: '经验', buff: '增益', tool: '道具', gift: '礼包', material: '材料'
+};
+
+// 缓存物品数据用于筛选
+let allItemsCache = [];
+
+/**
+ * 加载物品列表
+ */
+async function loadItems() {
+    try {
+        const result = await api('/items');
+        if (result.success) {
+            allItemsCache = result.data;
+            renderItemsTable(result.data);
+        }
+    } catch (error) {
+        showToast('加载物品失败', 'error');
+    }
+}
+
+/**
+ * 筛选物品
+ */
+function filterItems() {
+    const typeFilter = document.getElementById('item-type-filter').value;
+    const shopFilter = document.getElementById('item-shop-filter').value;
+    
+    let filtered = allItemsCache;
+    
+    if (typeFilter) {
+        filtered = filtered.filter(item => item.type === typeFilter);
+    }
+    if (shopFilter !== '') {
+        const shopAvailable = shopFilter === 'true';
+        filtered = filtered.filter(item => item.shop_available === shopAvailable);
+    }
+    
+    renderItemsTable(filtered);
+}
+
+/**
+ * 渲染物品表格
+ */
+function renderItemsTable(items) {
+    const tbody = document.getElementById('items-table-body');
+    tbody.innerHTML = items.map(item => `
+        <tr>
+            <td><code>${item.id}</code></td>
+            <td>${item.name}</td>
+            <td><span class="tag tag-item-${item.type}">${itemTypeNames[item.type] || item.type}</span></td>
+            <td>${getRarityStars(item.rarity || 1)}</td>
+            <td>${item.price > 0 ? item.price : '-'}</td>
+            <td>${item.currency === 'diamonds' ? '💎钻石' : '💰金币'}</td>
+            <td>${item.shop_available ? '<span class="status-online">上架</span>' : '<span class="status-offline">下架</span>'}</td>
+            <td>
+                <button class="btn btn-sm btn-secondary" onclick="showItemModal('${item.id}')">编辑</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteItem('${item.id}')">删除</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+/**
+ * 显示物品编辑模态框
+ */
+async function showItemModal(itemId = null) {
+    let item = {
+        id: '', name: '', description: '', type: 'heal', rarity: 1,
+        price: 100, currency: 'coins', shop_available: true,
+        sellable: true, sell_price: 50, effect: {}
+    };
+    
+    if (itemId) {
+        try {
+            const result = await api(`/items/detail?id=${itemId}`);
+            if (result.success) {
+                item = result.data;
+            }
+        } catch (error) {
+            showToast('获取物品信息失败', 'error');
+            return;
+        }
+    }
+    
+    const isEdit = !!itemId;
+    const title = isEdit ? `编辑物品: ${item.name}` : '添加新物品';
+    
+    const content = `
+        <form id="item-form" class="modal-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>物品ID *</label>
+                    <input type="text" name="id" value="${item.id}" ${isEdit ? 'readonly' : 'required'} 
+                           placeholder="如: super_potion">
+                </div>
+                <div class="form-group">
+                    <label>物品名称 *</label>
+                    <input type="text" name="name" value="${item.name}" required placeholder="如: 超级药水">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>描述</label>
+                <textarea name="description" rows="2" placeholder="物品描述...">${item.description || ''}</textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>类型</label>
+                    <select name="type">
+                        <option value="capture" ${item.type === 'capture' ? 'selected' : ''}>捕捉道具</option>
+                        <option value="heal" ${item.type === 'heal' ? 'selected' : ''}>治疗药水</option>
+                        <option value="revive" ${item.type === 'revive' ? 'selected' : ''}>复活道具</option>
+                        <option value="evolution" ${item.type === 'evolution' ? 'selected' : ''}>进化石</option>
+                        <option value="stamina" ${item.type === 'stamina' ? 'selected' : ''}>体力道具</option>
+                        <option value="exp" ${item.type === 'exp' ? 'selected' : ''}>经验道具</option>
+                        <option value="buff" ${item.type === 'buff' ? 'selected' : ''}>增益道具</option>
+                        <option value="tool" ${item.type === 'tool' ? 'selected' : ''}>工具道具</option>
+                        <option value="gift" ${item.type === 'gift' ? 'selected' : ''}>礼包</option>
+                        <option value="material" ${item.type === 'material' ? 'selected' : ''}>材料</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>稀有度</label>
+                    <select name="rarity">
+                        <option value="1" ${item.rarity === 1 ? 'selected' : ''}>★ 普通</option>
+                        <option value="2" ${item.rarity === 2 ? 'selected' : ''}>★★ 优秀</option>
+                        <option value="3" ${item.rarity === 3 ? 'selected' : ''}>★★★ 稀有</option>
+                        <option value="4" ${item.rarity === 4 ? 'selected' : ''}>★★★★ 史诗</option>
+                        <option value="5" ${item.rarity === 5 ? 'selected' : ''}>★★★★★ 传说</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-section">
+                <h4>💰 商店设置</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>购买价格</label>
+                        <input type="number" name="price" value="${item.price || 0}" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>货币类型</label>
+                        <select name="currency">
+                            <option value="coins" ${item.currency === 'coins' ? 'selected' : ''}>💰 金币</option>
+                            <option value="diamonds" ${item.currency === 'diamonds' ? 'selected' : ''}>💎 钻石</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="shop_available" ${item.shop_available ? 'checked' : ''}>
+                            在商店出售
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="sellable" ${item.sellable ? 'checked' : ''}>
+                            允许玩家出售
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>出售价格 (玩家卖出获得金币)</label>
+                    <input type="number" name="sell_price" value="${item.sell_price || 0}" min="0">
+                </div>
+            </div>
+            <div class="form-section">
+                <h4>✨ 效果设置</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>治疗HP</label>
+                        <input type="number" name="effect_heal_hp" value="${item.effect?.heal_hp || 0}" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>治疗HP百分比</label>
+                        <input type="number" name="effect_heal_percent" value="${item.effect?.heal_percent || 0}" min="0" max="100">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>恢复体力</label>
+                        <input type="number" name="effect_restore_stamina" value="${item.effect?.restore_stamina || 0}" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>经验值</label>
+                        <input type="number" name="effect_exp" value="${item.effect?.exp || 0}" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>捕捉率加成</label>
+                        <input type="number" name="effect_catch_rate" value="${item.effect?.catch_rate || 0}" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="effect_revive" ${item.effect?.revive ? 'checked' : ''}>
+                            可复活精灵
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </form>
+    `;
+    
+    showModal(title, content, () => saveItem(isEdit));
+}
+
+/**
+ * 保存物品
+ */
+async function saveItem(isEdit) {
+    const form = document.getElementById('item-form');
+    const formData = new FormData(form);
+    
+    const item = {
+        id: formData.get('id'),
+        name: formData.get('name'),
+        description: formData.get('description'),
+        type: formData.get('type'),
+        rarity: parseInt(formData.get('rarity')),
+        price: parseInt(formData.get('price')) || 0,
+        currency: formData.get('currency'),
+        shop_available: form.querySelector('[name="shop_available"]').checked,
+        sellable: form.querySelector('[name="sellable"]').checked,
+        sell_price: parseInt(formData.get('sell_price')) || 0,
+        effect: {}
+    };
+    
+    // 收集效果数据
+    const healHp = parseInt(formData.get('effect_heal_hp')) || 0;
+    const healPercent = parseInt(formData.get('effect_heal_percent')) || 0;
+    const restoreStamina = parseInt(formData.get('effect_restore_stamina')) || 0;
+    const exp = parseInt(formData.get('effect_exp')) || 0;
+    const catchRate = parseFloat(formData.get('effect_catch_rate')) || 0;
+    const revive = form.querySelector('[name="effect_revive"]').checked;
+    
+    if (healHp > 0) item.effect.heal_hp = healHp;
+    if (healPercent > 0) item.effect.heal_percent = healPercent;
+    if (restoreStamina > 0) item.effect.restore_stamina = restoreStamina;
+    if (exp > 0) item.effect.exp = exp;
+    if (catchRate > 0) item.effect.catch_rate = catchRate;
+    if (revive) item.effect.revive = true;
+    
+    try {
+        const endpoint = isEdit ? '/items/update' : '/items';
+        const result = await api(endpoint, {
+            method: isEdit ? 'PUT' : 'POST',
+            body: JSON.stringify(item)
+        });
+        
+        if (result.success) {
+            showToast(isEdit ? '物品已更新' : '物品已创建', 'success');
+            closeModal();
+            loadItems();
+        } else {
+            showToast(result.message || '保存失败', 'error');
+        }
+    } catch (error) {
+        showToast('保存物品失败', 'error');
+    }
+}
+
+/**
+ * 删除物品
+ */
+async function deleteItem(itemId) {
+    if (!confirm(`确定要删除物品 "${itemId}" 吗？`)) return;
+    
+    try {
+        const result = await api(`/items?id=${itemId}`, { method: 'DELETE' });
+        if (result.success) {
+            showToast('物品已删除', 'success');
+            loadItems();
+        } else {
+            showToast(result.message || '删除失败', 'error');
+        }
+    } catch (error) {
+        showToast('删除物品失败', 'error');
     }
 }
 
