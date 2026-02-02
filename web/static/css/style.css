@@ -803,7 +803,74 @@ body {
         grid-template-columns: 1fr;
     }
 
-    .player-detail {
+}
+
+/* ==================== 技能效果卡片 ==================== */
+.effect-item {
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.effect-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: #e2e8f0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.effect-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+.effect-body {
+    padding: 14px;
+}
+
+.effect-body .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.effect-body .form-row:last-child {
+    margin-bottom: 0;
+}
+
+.effect-body .form-group {
+    margin-bottom: 0;
+}
+
+.effect-body label {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-bottom: 4px;
+}
+
+.effect-body select,
+.effect-body input {
+    padding: 8px 10px;
+    font-size: 13px;
+}
+
+#skill-effects-container:empty::before {
+    content: '暂无效果，点击"+ 添加效果"按钮添加';
+    display: block;
+    padding: 20px;
+    text-align: center;
+    color: var(--text-light);
+    font-style: italic;
+    background: #f8fafc;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius);
+}
         grid-template-columns: 1fr;
     }
 }

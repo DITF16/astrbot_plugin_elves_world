@@ -610,6 +610,7 @@ function showSkillModal(skillId = null) {
                 <div class="form-group">
                     <label>属性</label>
                     <select name="type">
+                        <option value="normal">普通</option>
                         <option value="fire">火</option>
                         <option value="water">水</option>
                         <option value="grass">草</option>
@@ -650,6 +651,12 @@ function showSkillModal(skillId = null) {
                 <label>描述</label>
                 <textarea name="description" placeholder="技能的描述..."></textarea>
             </div>
+
+            <div class="form-group">
+                <label>技能效果 <button type="button" class="btn btn-secondary btn-small" onclick="addSkillEffect()">+ 添加效果</button></label>
+                <div id="skill-effects-container"></div>
+                <div class="hint">可添加多个效果，如：中毒、麻痹、属性变化、护盾、回血等</div>
+            </div>
         </form>
     `;
 
@@ -661,6 +668,8 @@ function showSkillModal(skillId = null) {
         loadSkillData(skillId);
     }
 }
+
+
 
 async function loadSkillData(skillId) {
     try {
@@ -678,6 +687,9 @@ async function loadSkillData(skillId) {
 
             // 保存原始ID
             form.dataset.originalId = s.id;
+            
+            // 渲染技能效果
+            renderSkillEffects(s.effects || []);
         }
     } catch (error) {
         showToast('加载技能数据失败', 'error');
@@ -698,7 +710,7 @@ async function saveSkill(isEdit) {
         power: parseInt(formData.get('power')) || 0,
         accuracy: parseInt(formData.get('accuracy')) || 100,
         description: formData.get('description'),
-        effects: []
+        effects: collectSkillEffects()
     };
     try {
         const endpoint = isEdit
@@ -741,6 +753,237 @@ async function deleteSkill(skillId) {
         showToast('删除失败', 'error');
     }
 }
+
+// ==================== 技能效果配置 ====================
+
+// 效果类型定义 - 包含所有支持的效果
+const SKILL_EFFECT_TYPES = {
+    // 状态效果
+    'poison': { name: '中毒', category: 'status', hasValue: true, valueLabel: '每回合伤害%', hasDuration: true, hasChance: true },
+    'burn': { name: '烧伤', category: 'status', hasValue: true, valueLabel: '每回合伤害%', hasDuration: true, hasChance: true },
+    'paralyze': { name: '麻痹', category: 'status', hasValue: false, hasDuration: true, hasChance: true },
+    'sleep': { name: '睡眠', category: 'status', hasValue: false, hasDuration: true, hasChance: true },
+    'freeze': { name: '冰冻', category: 'status', hasValue: false, hasDuration: true, hasChance: true },
+    'confuse': { name: '混乱', category: 'status', hasValue: false, hasDuration: true, hasChance: true },
+    
+    // 回复效果
+    'heal': { name: '治疗', category: 'recovery', hasValue: true, valueLabel: '回复HP%', hasDuration: false, hasChance: false, targetSelf: true },
+    'regen': { name: '持续回复', category: 'recovery', hasValue: true, valueLabel: '每回合回复%', hasDuration: true, hasChance: false, targetSelf: true },
+    'drain': { name: '吸血', category: 'recovery', hasValue: true, valueLabel: '吸取伤害%', hasDuration: false, hasChance: false, targetSelf: true },
+    
+    // 护盾效果
+    'shield': { name: '护盾', category: 'defense', hasValue: true, valueLabel: '护盾值%HP', hasDuration: true, hasChance: false, targetSelf: true },
+    
+    // 属性提升 (自身)
+    'attack_up': { name: '攻击提升', category: 'buff', hasValue: true, valueLabel: '提升%', hasDuration: true, hasChance: false, targetSelf: true },
+    'defense_up': { name: '防御提升', category: 'buff', hasValue: true, valueLabel: '提升%', hasDuration: true, hasChance: false, targetSelf: true },
+    'sp_attack_up': { name: '特攻提升', category: 'buff', hasValue: true, valueLabel: '提升%', hasDuration: true, hasChance: false, targetSelf: true },
+    'sp_defense_up': { name: '特防提升', category: 'buff', hasValue: true, valueLabel: '提升%', hasDuration: true, hasChance: false, targetSelf: true },
+    'speed_up': { name: '速度提升', category: 'buff', hasValue: true, valueLabel: '提升%', hasDuration: true, hasChance: false, targetSelf: true },
+    'accuracy_up': { name: '命中提升', category: 'buff', hasValue: true, valueLabel: '提升%', hasDuration: true, hasChance: false, targetSelf: true },
+    'evasion_up': { name: '闪避提升', category: 'buff', hasValue: true, valueLabel: '提升%', hasDuration: true, hasChance: false, targetSelf: true },
+    'critical_up': { name: '暴击提升', category: 'buff', hasValue: true, valueLabel: '提升%', hasDuration: true, hasChance: false, targetSelf: true },
+    
+    // 属性降低 (敌方)
+    'attack_down': { name: '攻击降低', category: 'debuff', hasValue: true, valueLabel: '降低%', hasDuration: true, hasChance: true },
+    'defense_down': { name: '防御降低', category: 'debuff', hasValue: true, valueLabel: '降低%', hasDuration: true, hasChance: true },
+    'sp_attack_down': { name: '特攻降低', category: 'debuff', hasValue: true, valueLabel: '降低%', hasDuration: true, hasChance: true },
+    'sp_defense_down': { name: '特防降低', category: 'debuff', hasValue: true, valueLabel: '降低%', hasDuration: true, hasChance: true },
+    'speed_down': { name: '速度降低', category: 'debuff', hasValue: true, valueLabel: '降低%', hasDuration: true, hasChance: true },
+    'accuracy_down': { name: '命中降低', category: 'debuff', hasValue: true, valueLabel: '降低%', hasDuration: true, hasChance: true },
+    'evasion_down': { name: '闪避降低', category: 'debuff', hasValue: true, valueLabel: '降低%', hasDuration: true, hasChance: true },
+    
+    // 特殊效果
+    'recoil': { name: '反伤', category: 'special', hasValue: true, valueLabel: '反伤%', hasDuration: false, hasChance: false },
+    'priority_up': { name: '先制', category: 'special', hasValue: true, valueLabel: '优先级', hasDuration: false, hasChance: false },
+    'multi_hit': { name: '多段攻击', category: 'special', hasValue: true, valueLabel: '攻击次数', hasDuration: false, hasChance: false },
+    'flinch': { name: '畏缩', category: 'special', hasValue: false, hasDuration: false, hasChance: true },
+};
+
+// 效果类别中文名
+const EFFECT_CATEGORIES = {
+    'status': '💀 状态异常',
+    'recovery': '💚 回复效果',
+    'defense': '🛡️ 防御效果',
+    'buff': '⬆️ 属性提升',
+    'debuff': '⬇️ 属性降低',
+    'special': '✨ 特殊效果'
+};
+
+// 当前技能的效果列表
+let currentSkillEffects = [];
+
+// 添加技能效果
+function addSkillEffect(effectData = null) {
+    const container = document.getElementById('skill-effects-container');
+    const effectIndex = container.children.length;
+    
+    const effect = effectData || {
+        type: 'poison',
+        value: 10,
+        chance: 100,
+        duration: 3,
+        target: 'enemy'
+    };
+    
+    const effectDiv = document.createElement('div');
+    effectDiv.className = 'effect-item';
+    effectDiv.dataset.index = effectIndex;
+    
+    // 获取效果类型信息
+    const effectInfo = SKILL_EFFECT_TYPES[effect.type] || SKILL_EFFECT_TYPES['poison'];
+    
+    effectDiv.innerHTML = `
+        <div class="effect-header">
+            <span class="effect-title">效果 #${effectIndex + 1}</span>
+            <button type="button" class="btn btn-danger btn-small" onclick="removeSkillEffect(${effectIndex})">删除</button>
+        </div>
+        <div class="effect-body">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>效果类型</label>
+                    <select class="effect-type" onchange="onEffectTypeChange(${effectIndex})">
+                        ${Object.entries(EFFECT_CATEGORIES).map(([catKey, catName]) => `
+                            <optgroup label="${catName}">
+                                ${Object.entries(SKILL_EFFECT_TYPES)
+                                    .filter(([_, info]) => info.category === catKey)
+                                    .map(([key, info]) => `
+                                        <option value="${key}" ${effect.type === key ? 'selected' : ''}>${info.name}</option>
+                                    `).join('')}
+                            </optgroup>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="form-group effect-value-group" style="${effectInfo.hasValue ? '' : 'display:none'}">
+                    <label class="effect-value-label">${effectInfo.valueLabel || '数值'}</label>
+                    <input type="number" class="effect-value" value="${effect.value || 10}" min="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group effect-chance-group" style="${effectInfo.hasChance ? '' : 'display:none'}">
+                    <label>触发几率 %</label>
+                    <input type="number" class="effect-chance" value="${effect.chance || 100}" min="0" max="100">
+                </div>
+                <div class="form-group effect-duration-group" style="${effectInfo.hasDuration ? '' : 'display:none'}">
+                    <label>持续回合</label>
+                    <input type="number" class="effect-duration" value="${effect.duration || 3}" min="1" max="10">
+                </div>
+                <div class="form-group effect-target-group">
+                    <label>目标</label>
+                    <select class="effect-target">
+                        <option value="enemy" ${effect.target === 'enemy' ? 'selected' : ''}>敌方</option>
+                        <option value="self" ${effect.target === 'self' ? 'selected' : ''}>自身</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(effectDiv);
+    
+    // 设置默认目标
+    if (effectInfo.targetSelf) {
+        effectDiv.querySelector('.effect-target').value = 'self';
+    }
+}
+
+// 效果类型改变时更新UI
+function onEffectTypeChange(index) {
+    const container = document.getElementById('skill-effects-container');
+    const effectDiv = container.children[index];
+    const typeSelect = effectDiv.querySelector('.effect-type');
+    const effectType = typeSelect.value;
+    const effectInfo = SKILL_EFFECT_TYPES[effectType];
+    
+    // 更新数值组
+    const valueGroup = effectDiv.querySelector('.effect-value-group');
+    const valueLabel = effectDiv.querySelector('.effect-value-label');
+    if (effectInfo.hasValue) {
+        valueGroup.style.display = '';
+        valueLabel.textContent = effectInfo.valueLabel || '数值';
+    } else {
+        valueGroup.style.display = 'none';
+    }
+    
+    // 更新几率组
+    const chanceGroup = effectDiv.querySelector('.effect-chance-group');
+    chanceGroup.style.display = effectInfo.hasChance ? '' : 'none';
+    
+    // 更新持续回合组
+    const durationGroup = effectDiv.querySelector('.effect-duration-group');
+    durationGroup.style.display = effectInfo.hasDuration ? '' : 'none';
+    
+    // 更新默认目标
+    const targetSelect = effectDiv.querySelector('.effect-target');
+    if (effectInfo.targetSelf) {
+        targetSelect.value = 'self';
+    } else if (effectInfo.category === 'status' || effectInfo.category === 'debuff') {
+        targetSelect.value = 'enemy';
+    }
+}
+
+// 删除技能效果
+function removeSkillEffect(index) {
+    const container = document.getElementById('skill-effects-container');
+    const effectDiv = container.querySelector(`[data-index="${index}"]`);
+    if (effectDiv) {
+        effectDiv.remove();
+        // 重新编号
+        Array.from(container.children).forEach((div, i) => {
+            div.dataset.index = i;
+            div.querySelector('.effect-title').textContent = `效果 #${i + 1}`;
+            // 更新删除按钮的onclick
+            div.querySelector('.btn-danger').onclick = () => removeSkillEffect(i);
+            // 更新类型选择的onchange
+            div.querySelector('.effect-type').onchange = () => onEffectTypeChange(i);
+        });
+    }
+}
+
+// 收集所有效果数据
+function collectSkillEffects() {
+    const container = document.getElementById('skill-effects-container');
+    const effects = [];
+    
+    Array.from(container.children).forEach(effectDiv => {
+        const effectType = effectDiv.querySelector('.effect-type').value;
+        const effectInfo = SKILL_EFFECT_TYPES[effectType];
+        
+        const effect = {
+            type: effectType,
+            target: effectDiv.querySelector('.effect-target').value
+        };
+        
+        if (effectInfo.hasValue) {
+            effect.value = parseInt(effectDiv.querySelector('.effect-value').value) || 0;
+        }
+        
+        if (effectInfo.hasChance) {
+            effect.chance = parseInt(effectDiv.querySelector('.effect-chance').value) || 100;
+        }
+        
+        if (effectInfo.hasDuration) {
+            effect.duration = parseInt(effectDiv.querySelector('.effect-duration').value) || 3;
+        }
+        
+        effects.push(effect);
+    });
+    
+    return effects;
+}
+
+// 渲染已有的效果列表
+function renderSkillEffects(effects) {
+    const container = document.getElementById('skill-effects-container');
+    container.innerHTML = '';
+    
+    if (effects && effects.length > 0) {
+        effects.forEach(effect => {
+            addSkillEffect(effect);
+        });
+    }
+}
+
 
 // ==================== 区域管理 ====================
 
@@ -1829,6 +2072,9 @@ window.deleteMonster = deleteMonster;
 window.showSkillModal = showSkillModal;
 window.editSkill = editSkill;
 window.deleteSkill = deleteSkill;
+window.addSkillEffect = addSkillEffect;
+window.removeSkillEffect = removeSkillEffect;
+window.onEffectTypeChange = onEffectTypeChange;
 
 window.showRegionModal = showRegionModal;
 window.editRegion = editRegion;

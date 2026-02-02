@@ -520,6 +520,21 @@ class BattleSystem:
             result["is_critical"] = damage_result["is_critical"]
             result["effectiveness"] = damage_result["effectiveness"]
 
+
+            # 护盾吸收伤害
+            shield = defender.get("_shield", 0)
+            absorbed_damage = 0
+            if shield > 0:
+                absorbed_damage = min(shield, damage)
+                defender["_shield"] = shield - absorbed_damage
+                damage = damage - absorbed_damage
+                if absorbed_damage > 0:
+                    result["messages"].append(f"护盾吸收了 {absorbed_damage} 点伤害！")
+                if defender["_shield"] <= 0:
+                    defender["_shield"] = 0
+                    defender["_shield_turns"] = 0
+                    result["messages"].append(f"{defender_name} 的护盾被击碎了！")
+
             # 应用伤害
             defender["current_hp"] = max(0, defender["current_hp"] - damage)
 
@@ -533,6 +548,18 @@ class BattleSystem:
                 result["messages"].append("效果不佳...")
 
             result["messages"].append(f"造成了 {damage} 点伤害！")
+
+            # 吸血效果处理
+            drain_percent = attacker.get("_drain_percent", 0)
+            if drain_percent > 0 and damage > 0:
+                drain_amount = int(damage * drain_percent / 100)
+                if drain_amount > 0:
+                    old_hp = attacker["current_hp"]
+                    attacker["current_hp"] = min(attacker["max_hp"], old_hp + drain_amount)
+                    actual_drain = attacker["current_hp"] - old_hp
+                    if actual_drain > 0:
+                        result["messages"].append(f"{attacker_name} 吸取了 {actual_drain} HP！")
+
 
             # 检查击倒
             if defender["current_hp"] <= 0:
@@ -586,6 +613,12 @@ class BattleSystem:
         crit_effects = [e for e in skill.get("effects", []) if e.get("type") == "crit_up"]
         if crit_effects:
             crit_chance = 0.25  # 提高到25%
+        # 应用暴击 buff
+        crit_buff = attacker.get("_buff_critical", 0)
+        if crit_buff > 0:
+            crit_chance = min(1.0, crit_chance + crit_buff / 100)  # 暴击率上限100%
+        is_critical = random.random() < crit_chance
+
         is_critical = random.random() < crit_chance
 
         # STAB（属性一致加成）
@@ -696,9 +729,72 @@ class BattleSystem:
                     messages.append(f"{attacker_name} 恢复了 {actual_heal} HP！")
 
             # 回复状态（每回合恢复）
+            # 回复状态（每回合恢复）
             elif effect_type == "regen":
+                duration = effect.get("duration", 3)
                 attacker["_regen"] = value
-                messages.append(f"{attacker_name} 被治愈之力包围！")
+                attacker["_regen_turns"] = duration
+                messages.append(f"{attacker_name} 被治愈之力包围！（持续{duration}回合）")
+
+            # 护盾效果
+            elif effect_type == "shield":
+                duration = effect.get("duration", 3)
+                shield_amount = int(attacker.get("max_hp", 100) * value / 100)
+                attacker["_shield"] = attacker.get("_shield", 0) + shield_amount
+                attacker["_shield_turns"] = duration
+                messages.append(f"{attacker_name} 获得了 {shield_amount} 点护盾！（持续{duration}回合）")
+
+            # 吸血效果（造成伤害时回血）
+            elif effect_type == "drain":
+                # drain 效果在伤害计算时处理，这里只做标记
+                attacker["_drain_percent"] = value
+                messages.append(f"{attacker_name} 的攻击将吸取生命！")
+
+            # 属性提升效果 (自身)
+            elif effect_type in ["attack_up", "defense_up", "sp_attack_up", "sp_defense_up", 
+                                 "speed_up", "accuracy_up", "evasion_up", "critical_up"]:
+                stat_name = effect_type.replace("_up", "")
+                duration = effect.get("duration", 3)
+                boost_percent = value
+                # 存储属性加成
+                buff_key = f"_buff_{stat_name}"
+                buff_turns_key = f"_buff_{stat_name}_turns"
+                attacker[buff_key] = attacker.get(buff_key, 0) + boost_percent
+                attacker[buff_turns_key] = max(attacker.get(buff_turns_key, 0), duration)
+                stat_names_cn = {
+                    "attack": "攻击", "defense": "防御", "sp_attack": "特攻",
+                    "sp_defense": "特防", "speed": "速度", "accuracy": "命中",
+                    "evasion": "闪避", "critical": "暴击"
+                }
+                messages.append(f"{attacker_name} 的{stat_names_cn.get(stat_name, stat_name)}提升了{boost_percent}%！（持续{duration}回合）")
+
+            # 属性降低效果 (对敌方)
+            elif effect_type in ["attack_down", "defense_down", "sp_attack_down", "sp_defense_down",
+                                 "speed_down", "accuracy_down", "evasion_down"]:
+                stat_name = effect_type.replace("_down", "")
+                duration = effect.get("duration", 3)
+                debuff_percent = value
+                debuff_key = f"_debuff_{stat_name}"
+                debuff_turns_key = f"_debuff_{stat_name}_turns"
+                defender[debuff_key] = defender.get(debuff_key, 0) + debuff_percent
+                defender[debuff_turns_key] = max(defender.get(debuff_turns_key, 0), duration)
+                stat_names_cn = {
+                    "attack": "攻击", "defense": "防御", "sp_attack": "特攻",
+                    "sp_defense": "特防", "speed": "速度", "accuracy": "命中",
+                    "evasion": "闪避"
+                }
+                messages.append(f"{defender_name} 的{stat_names_cn.get(stat_name, stat_name)}降低了{debuff_percent}%！（持续{duration}回合）")
+
+
+            # 混乱效果
+            elif effect_type == "confuse":
+                if defender["current_hp"] > 0 and not defender.get("_confused"):
+                    duration = effect.get("duration", 3)
+                    defender["_confused"] = True
+                    defender["_confused_turns"] = duration
+                    messages.append(f"{defender_name} 陷入了混乱！（持续{duration}回合）")
+
+
 
         return messages
 
@@ -1009,25 +1105,88 @@ class BattleSystem:
         return messages
 
     def _apply_regen_effects(self, battle: BattleState) -> List[str]:
-        """应用回复效果"""
+        """应用回复效果、护盾衰减、混乱等持续效果"""
         messages = []
 
         for monster in [battle.player_monster, battle.enemy_monster]:
             if not monster or monster.get("current_hp", 0) <= 0:
                 continue
 
+            monster_name = monster.get("nickname") or monster.get("name", "???")
+
+            # 回复效果
             regen_percent = monster.get("_regen", 0)
-            if regen_percent > 0:
+            regen_turns = monster.get("_regen_turns", 0)
+            if regen_percent > 0 and regen_turns > 0:
                 heal = max(1, int(monster["max_hp"] * regen_percent / 100))
                 old_hp = monster["current_hp"]
                 monster["current_hp"] = min(monster["max_hp"], old_hp + heal)
                 actual_heal = monster["current_hp"] - old_hp
 
                 if actual_heal > 0:
-                    monster_name = monster.get("nickname") or monster.get("name", "???")
                     messages.append(f"{monster_name} 恢复了 {actual_heal} HP！")
 
+                # 递减回合数
+                monster["_regen_turns"] = regen_turns - 1
+                if monster["_regen_turns"] <= 0:
+                    monster["_regen"] = 0
+                    messages.append(f"{monster_name} 的回复效果消失了。")
+
+            # 护盾衰减
+            shield_turns = monster.get("_shield_turns", 0)
+            if shield_turns > 0:
+                monster["_shield_turns"] = shield_turns - 1
+                if monster["_shield_turns"] <= 0:
+                    shield_left = monster.get("_shield", 0)
+                    monster["_shield"] = 0
+                    if shield_left > 0:
+                        messages.append(f"{monster_name} 的护盾消失了。")
+
+            # 混乱效果衰减
+            confused_turns = monster.get("_confused_turns", 0)
+            if confused_turns > 0:
+                monster["_confused_turns"] = confused_turns - 1
+                if monster["_confused_turns"] <= 0:
+                    monster["_confused"] = False
+                    messages.append(f"{monster_name} 恢复了理智！")
+
+            # Buff/Debuff 衰减
+            stat_types = ["attack", "defense", "sp_attack", "sp_defense", "speed", "accuracy", "evasion", "critical"]
+            stat_names_cn = {
+                "attack": "攻击", "defense": "防御", "sp_attack": "特攻",
+                "sp_defense": "特防", "speed": "速度", "accuracy": "命中",
+                "evasion": "闪避", "critical": "暴击"
+            }
+            
+            # Buff 衰减
+            for stat in stat_types:
+                buff_turns_key = f"_buff_{stat}_turns"
+                buff_key = f"_buff_{stat}"
+                buff_turns = monster.get(buff_turns_key, 0)
+                if buff_turns > 0:
+                    monster[buff_turns_key] = buff_turns - 1
+                    if monster[buff_turns_key] <= 0:
+                        if monster.get(buff_key, 0) > 0:
+                            monster[buff_key] = 0
+                            messages.append(f"{monster_name} 的{stat_names_cn.get(stat, stat)}提升效果消失了。")
+            
+            # Debuff 衰减
+            for stat in stat_types:
+                debuff_turns_key = f"_debuff_{stat}_turns"
+                debuff_key = f"_debuff_{stat}"
+                debuff_turns = monster.get(debuff_turns_key, 0)
+                if debuff_turns > 0:
+                    monster[debuff_turns_key] = debuff_turns - 1
+                    if monster[debuff_turns_key] <= 0:
+                        if monster.get(debuff_key, 0) > 0:
+                            monster[debuff_key] = 0
+                            messages.append(f"{monster_name} 的{stat_names_cn.get(stat, stat)}降低效果消失了。")
+
+
+
         return messages
+
+
 
     def _check_battle_end(self, battle: BattleState, result: TurnResult) -> bool:
         """检查战斗是否结束"""
@@ -1126,7 +1285,19 @@ class BattleSystem:
         else:
             multiplier = self.STAT_STAGE_MULTIPLIERS.get(stage, 1)
 
-        return int(base_value * multiplier)
+        effective_value = int(base_value * multiplier)
+        
+        # 应用技能效果产生的 buff/debuff
+        buff_percent = monster.get(f"_buff_{stat_name}", 0)
+        debuff_percent = monster.get(f"_debuff_{stat_name}", 0)
+        
+        if buff_percent > 0:
+            effective_value = int(effective_value * (1 + buff_percent / 100))
+        if debuff_percent > 0:
+            effective_value = int(effective_value * (1 - debuff_percent / 100))
+        
+        return max(1, effective_value)  # 确保属性值至少为1
+
 
     def _check_hit(self, battle: BattleState, is_player: bool, base_accuracy: int) -> bool:
         """检查技能是否命中"""
@@ -1143,7 +1314,22 @@ class BattleSystem:
         acc_mult = self.ACCURACY_STAGE_MULTIPLIERS.get(acc_stage, 1)
         eva_mult = self.ACCURACY_STAGE_MULTIPLIERS.get(eva_stage, 1)
 
-        final_accuracy = base_accuracy * acc_mult / eva_mult
+        # 获取精灵对象以读取 buff/debuff
+        attacker = battle.player_monster if is_player else battle.enemy_monster
+        defender = battle.enemy_monster if is_player else battle.player_monster
+        
+        # 应用命中/闪避 buff/debuff
+        acc_buff = attacker.get("_buff_accuracy", 0) if attacker else 0
+        acc_debuff = attacker.get("_debuff_accuracy", 0) if attacker else 0
+        eva_buff = defender.get("_buff_evasion", 0) if defender else 0
+        eva_debuff = defender.get("_debuff_evasion", 0) if defender else 0
+        
+        # 计算最终修正
+        acc_final_mult = acc_mult * (1 + acc_buff/100) * (1 - acc_debuff/100)
+        eva_final_mult = eva_mult * (1 + eva_buff/100) * (1 - eva_debuff/100)
+        
+        final_accuracy = base_accuracy * acc_final_mult / max(0.01, eva_final_mult)
+
 
         return random.random() * 100 < final_accuracy
 
