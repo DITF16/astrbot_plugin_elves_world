@@ -558,8 +558,73 @@ class BattleHandlers:
         if action in ["逃跑", "逃", "跑", "run", "flee", "逃走"]:
             battle_action = BattleAction(action_type=ActionType.FLEE, actor_id="")
         
+
+        # 使用物品（格式: 用 物品名 或 use 物品名）
+        elif action.startswith("用 ") or action.startswith("用") or action.lower().startswith("use "):
+            # 解析物品名
+            if action.lower().startswith("use "):
+                item_name = action[4:].strip()
+            elif action.startswith("用 "):
+                item_name = action[2:].strip()
+            else:
+                item_name = action[1:].strip()
+            
+            if not item_name:
+                # 显示可用物品列表
+                inventory = self.pm.get_inventory(user_id)
+                usable_items = []
+                for item_id, count in inventory.items():
+                    item = self.config.get_item("items", item_id)
+                    if item and item.get("type") in ["heal", "cure_status", "full_restore"]:
+                        usable_items.append((item, count))
+                
+                if not usable_items:
+                    yield event.plain_result("❌ 你没有可在战斗中使用的物品")
+                    return
+                
+                lines = ["🎒 可使用的物品：", "━━━━━━━━━━━━━━━━━━━━"]
+                for item, count in usable_items:
+                    lines.append(f"• {item['name']} x{count}")
+                lines.append(f"\n发送 \"{prefix}用 物品名\" 使用物品")
+                yield event.plain_result("\n".join(lines))
+                return
+            
+            # 查找物品
+            item = self.config.get_item("items", item_name)
+            if not item:
+                for k, v in self.config.items.items():
+                    if item_name in k or item_name in v.get("name", ""):
+                        item = v
+                        break
+            
+            if not item:
+                yield event.plain_result(f"❌ 找不到物品: {item_name}")
+                return
+            
+            # 检查是否拥有该物品
+            if not self.pm.has_item(user_id, item["id"]):
+                yield event.plain_result(f"❌ 你没有 {item['name']}")
+                return
+            
+            # 检查物品是否可在战斗中使用
+            item_type = item.get("type", "")
+            if item_type not in ["heal", "cure_status", "full_restore"]:
+                yield event.plain_result(f"❌ {item['name']} 不能在战斗中使用")
+                return
+            
+            # 扣除物品
+            self.pm.use_item(user_id, item["id"])
+            
+            # 构建使用物品的行动
+            battle_action = BattleAction(
+                action_type=ActionType.ITEM,
+                actor_id=player_monster.get("instance_id", ""),
+                item_id=item["id"]
+            )
+        
         # 捕捉
         elif action in ["捕捉", "捕", "抓", "catch", "捕获"]:
+
             battle_action = BattleAction(action_type=ActionType.CATCH, actor_id="")
         
         # 换精灵
@@ -622,9 +687,11 @@ class BattleHandlers:
                 f"发送 \"{prefix}1-4\" 使用技能\n"
                 f"发送 \"{prefix}逃跑\" 逃离战斗\n"
                 f"发送 \"{prefix}捕捉\" 捕捉精灵\n"
+                f"发送 \"{prefix}用 物品名\" 使用物品\n"
                 f"发送 \"{prefix}换 序号\" 切换精灵"
             )
             return
+        
         
         # 执行回合
         turn_result = self.battle_system.process_turn(battle, battle_action)
