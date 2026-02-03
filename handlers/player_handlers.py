@@ -116,73 +116,74 @@ class PlayerHandlers:
             finally:
                 event.stop_event()
 
-        async def cmd_info(self, event: AstrMessageEvent):
-            """
-            查看个人信息
-            指令: /精灵 我
-            """
-            user_id = event.get_sender_id()
+    async def cmd_info(self, event: AstrMessageEvent):
+        """
+        查看个人信息
+        指令: /精灵 我
+        """
+        user_id = event.get_sender_id()
 
-            if not await self.pm.player_exists(user_id):
-                yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册 开始游戏")
-                return
+        if not await self.pm.player_exists(user_id):
+            yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册 开始游戏")
+            return
 
-            info_text = await self.pm.get_player_info_text(user_id)
-            yield event.plain_result(info_text)
+        info_text = await self.pm.get_player_info_text(user_id)
+        yield event.plain_result(info_text)
 
-        async def cmd_heal(self, event: AstrMessageEvent):
-            """
-            治疗所有精灵
-            指令: /精灵 治疗
-            """
-            user_id = event.get_sender_id()
+    async def cmd_heal(self, event: AstrMessageEvent):
+        """
+        治疗所有精灵
+        指令: /精灵 治疗
+        """
+        user_id = event.get_sender_id()
 
-            player = await self.pm.get_player(user_id)
-            if not player:
-                yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
-                return
+        player = await self.pm.get_player(user_id)
+        if not player:
+            yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
+            return
 
-            # 使用插件配置的治疗费用
-            heal_cost = self.plugin.heal_cost
+        # 使用插件配置的治疗费用
+        heal_cost = self.plugin.heal_cost
 
-            if player["coins"] < heal_cost:
-                yield event.plain_result(
-                    f"❌ 金币不足！\n"
-                    f"治疗需要 {heal_cost} 金币\n"
-                    f"当前金币: {player['coins']}"
-                )
-                return
-
-            healed = await self.pm.heal_all_monsters(user_id)
-
-            if healed == 0:
-                yield event.plain_result("💚 你的精灵都很健康，不需要治疗~")
-                return
-
-            await self.pm.spend_coins(user_id, heal_cost)
+        if player["coins"] < heal_cost:
             yield event.plain_result(
-                f"💚 治疗完成！\n"
-                f"已恢复 {healed} 只精灵的HP和状态\n"
-                f"消耗 {heal_cost} 金币"
+                f"❌ 金币不足！\n"
+                f"治疗需要 {heal_cost} 金币\n"
+                f"当前金币: {player['coins']}"
             )
+            return
 
-        async def cmd_rank(self, event: AstrMessageEvent, rank_type: str = "胜场"):
-            """
-            查看排行榜
-            指令: /精灵 排行 [类型]
-            类型: 胜场/等级/金币
-            """
-            type_map = {
-                "胜场": "wins",
-                "胜利": "wins",
-                "等级": "level",
-                "金币": "coins",
-                "钱": "coins",
-            }
+        healed = await self.pm.heal_all_monsters(user_id)
 
-            order_by = type_map.get(rank_type, "wins")
-            text = await self.pm.get_leaderboard_text(order_by, limit=10)
-            yield event.plain_result(text)
+        if healed == 0:
+            yield event.plain_result("💚 你的精灵都很健康，不需要治疗~")
+            return
+
+        await self.pm.spend_coins(user_id, heal_cost)
+        yield event.plain_result(
+            f"💚 治疗完成！\n"
+            f"已恢复 {healed} 只精灵的HP和状态\n"
+            f"消耗 {heal_cost} 金币"
+        )
+
+    async def cmd_rank(self, event: AstrMessageEvent, rank_type: str = "胜场"):
+        """
+        查看排行榜
+        指令: /精灵 排行 [类型]
+        类型: 胜场/等级/金币
+        """
+        type_map = {
+            "胜场": "wins",
+            "胜利": "wins",
+            "等级": "level",
+            "金币": "coins",
+            "钱": "coins",
+        }
+
+        order_by = type_map.get(rank_type, "wins")
+        text = await self.pm.get_leaderboard_text(order_by, limit=10)
+        yield event.plain_result(text)
+
 
     async def cmd_help(self, event: AstrMessageEvent):
         """
