@@ -29,6 +29,11 @@ class BattleHandlers:
 
         # 活跃战斗 {unified_msg_origin: BattleState}
         self._active_battles: Dict[str, "BattleState"] = {}
+        self.explore_handlers = None  # 稍后注入，用于复用地图渲染
+
+    def set_explore_handlers(self, explore_handlers):
+        """注入探索处理器（避免循环引用）"""
+        self.explore_handlers = explore_handlers
 
     def _get_imports(self):
         """延迟导入"""
@@ -811,13 +816,25 @@ class BattleHandlers:
                     "region_name": state_data.get("region_name", "")
                 })
                 
-                map_text = self.world_manager.render_map(exp_map)
-                yield event.plain_result(
-                    f"\n📍 继续探索中...\n\n"
-                    f"{map_text}\n\n"
-                    f"━━━━━━━━━━━━━━━━━━━━\n"
-                    f"💡 发送 \"{prefix}坐标\" 继续移动"
-                )
+                region_name = state_data.get("region_name", "")
+                
+                # 复用 explore_handlers 的图片渲染方法
+                if self.explore_handlers:
+                    async for result in self.explore_handlers._send_map_image(
+                        event, exp_map, 
+                        region_name=region_name,
+                        extra_text=f"\n📍 继续探索中..."
+                    ):
+                        yield result
+                else:
+                    # 回退到文字地图（explore_handlers 未注入时）
+                    map_text = self.world_manager.render_map(exp_map)
+                    yield event.plain_result(
+                        f"\n📍 继续探索中...\n\n"
+                        f"{map_text}\n\n"
+                        f"━━━━━━━━━━━━━━━━━━━━\n"
+                        f"💡 发送 \"{prefix}坐标\" 继续移动"
+                    )
             else:
                 # 地图不存在，清除状态
                 self.plugin.db.clear_game_state(user_id)

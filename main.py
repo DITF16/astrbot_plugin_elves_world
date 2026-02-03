@@ -65,6 +65,7 @@ class MonsterGamePlugin(Star):
 
         # 注入依赖（避免循环引用）
         self.explore_handlers.set_battle_handlers(self.battle_handlers)
+        self.battle_handlers.set_explore_handlers(self.explore_handlers)
 
         # 初始化Web管理后台
         self.web_server = WebServer(self)
