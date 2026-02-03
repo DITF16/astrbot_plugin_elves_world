@@ -328,8 +328,6 @@ class MonsterGamePlugin(Star):
     @pm_group.command("重载配置")
     async def cmd_reload(self, event: AstrMessageEvent):
         """重新加载游戏配置（管理员）"""
-
-        """重新加载游戏配置（管理员）"""
         # TODO: 添加权限检查
         try:
             self.game_config.reload_all()

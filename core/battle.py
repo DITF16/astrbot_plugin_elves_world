@@ -639,8 +639,6 @@ class BattleSystem:
             crit_chance = min(1.0, crit_chance + crit_buff / 100)  # 暴击率上限100%
         is_critical = random.random() < crit_chance
 
-        is_critical = random.random() < crit_chance
-
         # STAB（属性一致加成）
         attacker_types = attacker.get("types", [])
         is_stab = skill_type in attacker_types
