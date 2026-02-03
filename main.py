@@ -2,7 +2,7 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.api import logger, AstrBotConfig
 from astrbot.core.star.filter.event_message_type import EventMessageType
-from astrbot.core.utils.astrbot_path import get_astrbot_data_path
+from astrbot.core.star import StarTools
 
 from pathlib import Path
 
@@ -40,7 +40,7 @@ class MonsterGamePlugin(Star):
         self.default_data_path = self.plugin_dir / "data"
 
         # 运行时数据目录（使用AstrBot规范路径）
-        self.plugin_data_path = Path(get_astrbot_data_path()) / "plugin_data" / "astrbot_plugin_elves_world"
+        self.plugin_data_path = StarTools.get_data_dir()
         self.plugin_data_path.mkdir(parents=True, exist_ok=True)
 
         # ==================== 读取配置 ====================
