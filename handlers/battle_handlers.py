@@ -8,7 +8,9 @@ from astrbot.api import logger
 # 不再需要 session_waiter，改用数据库状态 + 前缀触发
 # from astrbot.core.utils.session_waiter import session_waiter, SessionController
 
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, Optional
+from ..core.message_tracker import get_message_tracker, MessageType
+
 import random
 
 from astrbot.core.utils.session_waiter import session_waiter, SessionController
@@ -57,6 +59,124 @@ class BattleHandlers:
         else:
             char = "░"
         return char * filled + "·" * empty
+
+
+
+    async def _send_battle_message(self, event: AstrMessageEvent, text: str,
+                                    recall_previous: bool = True) -> Optional[int]:
+        """
+        发送战斗消息并追踪，支持撤回上一条战斗消息
+        
+        Args:
+            event: 消息事件
+            text: 消息文本
+            recall_previous: 是否撤回上一条战斗消息
+            
+        Returns:
+            发送成功返回 message_id，失败返回 None
+        """
+        user_id = event.get_sender_id()
+        tracker = get_message_tracker()
+        
+        # 尝试撤回上一条战斗消息
+        if recall_previous:
+            await tracker.recall_if_exists(user_id, MessageType.BATTLE, event)
+        
+        # 发送新消息并获取 message_id
+        message_id = await self._send_and_get_id(event, text)
+        
+        # 追踪新消息
+        if message_id:
+            tracker.track(
+                user_id=user_id,
+                message_id=message_id,
+                msg_type=MessageType.BATTLE,
+                platform=event.get_platform_name(),
+                session_id=event.get_group_id() or user_id
+            )
+        
+        return message_id
+    
+    async def _send_and_get_id(self, event: AstrMessageEvent, text: str) -> Optional[int]:
+        """
+        发送文本消息并获取 message_id
+        
+        Args:
+            event: 消息事件
+            text: 消息文本
+            
+        Returns:
+            message_id 或 None
+        """
+        try:
+            platform_name = event.get_platform_name()
+            
+            # OneBot V11 (aiocqhttp) 平台
+            if platform_name == "aiocqhttp":
+                return await self._send_onebot_text(event, text)
+            
+            # 其他平台：无法获取 message_id
+            return None
+            
+        except Exception as e:
+            logger.debug(f"发送消息失败: {e}")
+            return None
+    
+    async def _send_onebot_text(self, event: AstrMessageEvent, text: str) -> Optional[int]:
+        """
+        OneBot V11 发送文本消息并获取 message_id
+        """
+        try:
+            bot = getattr(event, 'bot', None)
+            if not bot:
+                return None
+            
+            messages = [{"type": "text", "data": {"text": text}}]
+            
+            group_id = event.get_group_id()
+            if group_id:
+                result = await bot.send_group_msg(group_id=int(group_id), message=messages)
+            else:
+                user_id = event.get_sender_id()
+                result = await bot.send_private_msg(user_id=int(user_id), message=messages)
+            
+            if isinstance(result, dict):
+                return result.get("message_id")
+            return None
+            
+        except Exception as e:
+            logger.debug(f"OneBot 发送消息失败: {e}")
+            return None
+    
+    async def _recall_map_message(self, event: AstrMessageEvent, user_id: str) -> bool:
+        """
+        撤回地图消息（进入战斗时调用）
+        
+        Args:
+            event: 消息事件
+            user_id: 用户ID
+            
+        Returns:
+            是否成功撤回
+        """
+        tracker = get_message_tracker()
+        return await tracker.recall_if_exists(user_id, MessageType.MAP, event)
+    
+    async def _recall_battle_message(self, event: AstrMessageEvent, user_id: str) -> bool:
+        """
+        撤回战斗消息（战斗结束时调用）
+        
+        Args:
+            event: 消息事件
+            user_id: 用户ID
+            
+        Returns:
+            是否成功撤回
+        """
+        tracker = get_message_tracker()
+        return await tracker.recall_if_exists(user_id, MessageType.BATTLE, event)
+
+
 
     def get_active_battle(self, umo: str):
         """获取活跃战斗"""
@@ -434,38 +554,45 @@ class BattleHandlers:
                     self.pm.record_boss_clear(user_id, battle.boss_id)
                 else:
                     self.world_manager.mark_monster_defeated(user_id)
-
+            
             level_up_text = "\n".join(level_up_messages)
             if level_up_text:
                 level_up_text = "\n" + level_up_text
+            
+            # 🔄 战斗结束，撤回最后的战斗消息，只保留战斗结果
+            await self._recall_battle_message(event, user_id)
+            
 
-            await event.send(event.plain_result(
+
+            yield event.plain_result(
                 f"{turn_messages}\n\n"
                 f"🏆 战斗胜利！\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n"
                 f"获得 ✨{exp_gained} 经验\n"
                 f"获得 💰{coins_gained} 金币"
                 f"{level_up_text}"
-            ))
-
+            )
+        
         elif turn_result.winner == "flee":
-            await event.send(event.plain_result(f"{turn_messages}"))
+            # 🔄 战斗结束，撤回最后的战斗消息
+            await self._recall_battle_message(event, user_id)
+            yield event.plain_result(f"{turn_messages}")
+        
 
+        
         elif turn_result.winner == "enemy":
             self.pm.record_battle(user_id, is_win=False)
-            await event.send(event.plain_result(
+            await self._recall_battle_message(event, user_id)
+            yield event.plain_result(
                 f"{turn_messages}\n\n"
                 f"💀 战斗失败...\n"
                 f"发送 /精灵 治疗 恢复精灵"
-            ))
+            )
 
-        # 如果在探索中，显示地图
-        exp_map = self.world_manager.get_active_map(user_id)
-        if exp_map:
-            map_text = self.world_manager.render_map(exp_map)
-            await event.send(event.plain_result(f"\n{map_text}"))
+
 
     # ==================== 前缀触发的战斗处理 ====================
+
 
     async def start_battle_from_state(self, event: AstrMessageEvent, user_id: str):
         """
@@ -517,15 +644,23 @@ class BattleHandlers:
         
         battle_type_text = "👹 BOSS战！" if is_boss else "⚔️ 战斗开始！"
         
-        yield event.plain_result(
+        # 🔄 进入战斗时撤回地图消息
+        await self._recall_map_message(event, user_id)
+        
+        # 发送战斗开始消息并追踪
+        battle_start_text = (
             f"{battle_type_text}\n\n"
             f"{battle_text}\n\n"
             f"{skill_menu}\n\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"💡 发送 \"{prefix}数字\" 使用技能（如 \"{prefix}1\"）\n"
-            f"💡 发送 \"{prefix}逃跑\" 逃离战斗\n"
-            f"💡 发送 \"{prefix}捕捉\" 尝试捕捉"
+            f"输入技能序号(1-4)攻击\n"
+            f"输入「{prefix}逃跑」逃离 | 输入「{prefix}捕捉」捕捉"
         )
+        
+        message_id = await self._send_battle_message(event, battle_start_text, recall_previous=False)
+        if message_id is None:
+            # 平台不支持获取 message_id，使用传统方式
+            yield event.plain_result(battle_start_text)
 
     async def handle_battle_action(self, event: AstrMessageEvent, user_id: str, action: str, state_data: dict):
         """
@@ -538,6 +673,7 @@ class BattleHandlers:
             state_data: 游戏状态数据
         """
         MonsterInstance, BattleState, BattleAction, ActionType, BattleType = self._get_imports()
+
         prefix = self.plugin.game_action_prefix
         umo = event.unified_msg_origin
         
@@ -726,15 +862,22 @@ class BattleHandlers:
                 yield event.plain_result("\n".join(lines))
                 return
         
-        # 显示战斗状态
+        # 显示战斗状态（撤回上一条战斗消息，发送新状态）
         battle_text = self.battle_system.get_battle_status_text(battle)
         skill_menu = self.battle_system.get_skill_menu_text(battle)
         
-        yield event.plain_result(
+        battle_status_text = (
             f"{turn_messages}\n\n"
             f"{battle_text}\n\n"
             f"{skill_menu}"
         )
+        
+        # 🔄 撤回上一条战斗消息，发送新状态并追踪
+        message_id = await self._send_battle_message(event, battle_status_text, recall_previous=True)
+        if message_id is None:
+            # 平台不支持，使用传统方式
+            yield event.plain_result(battle_status_text)
+
 
     async def _handle_battle_end_with_state(self, event, user_id, umo, battle, turn_result, turn_messages, state_data):
         """处理战斗结束（带状态管理）"""
@@ -785,7 +928,12 @@ class BattleHandlers:
             level_up_text = "\n".join(level_up_messages)
             if level_up_text:
                 level_up_text = "\n" + level_up_text
+
             
+            # 🔄 战斗结束，撤回最后的战斗消息，只保留战斗结果
+            await self._recall_battle_message(event, user_id)
+            
+
             yield event.plain_result(
                 f"{turn_messages}\n\n"
                 f"🏆 战斗胜利！\n"
@@ -796,15 +944,20 @@ class BattleHandlers:
             )
         
         elif turn_result.winner == "flee":
+            # 🔄 战斗结束，撤回最后的战斗消息
+            await self._recall_battle_message(event, user_id)
             yield event.plain_result(f"{turn_messages}")
         
         elif turn_result.winner == "enemy":
             self.pm.record_battle(user_id, is_win=False)
+            # 🔄 战斗结束，撤回最后的战斗消息
+            await self._recall_battle_message(event, user_id)
             yield event.plain_result(
                 f"{turn_messages}\n\n"
                 f"💀 战斗失败...\n"
                 f"发送 /精灵 治疗 恢复精灵"
             )
+
         
         # 战斗结束后，恢复探索状态或清除状态
         if from_explore:

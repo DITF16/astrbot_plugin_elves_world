@@ -6,6 +6,7 @@
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.message_components import Image
 from astrbot.api import logger
+from ..core.message_tracker import get_message_tracker, MessageType
 # 不再需要 session_waiter，改用数据库状态 + 前缀触发
 # from astrbot.core.utils.session_waiter import session_waiter, SessionController
 
@@ -75,18 +76,127 @@ class ExploreHandlers:
             logger.warning(f"地图图片渲染失败: {e}")
             return None
 
-    async def _send_map_image(self, event: AstrMessageEvent, exp_map, 
-                               region_name: str = "", extra_text: str = ""):
+    async def _send_with_recall(self, event: AstrMessageEvent, 
+                                  message_chain: list, msg_type: MessageType,
+                                  recall_previous: bool = True) -> Optional[int]:
         """
-        发送地图图片（异步生成器）
+        发送消息并追踪，支持撤回上一条同类型消息
+        
+        Args:
+            event: 消息事件
+            message_chain: 消息链（AstrBot 消息组件列表）
+            msg_type: 消息类型（用于追踪）
+            recall_previous: 是否撤回上一条同类型消息
+            
+        Returns:
+            发送成功返回 message_id，失败返回 None
+        """
+        user_id = event.get_sender_id()
+        tracker = get_message_tracker()
+        
+        # 尝试撤回上一条同类型消息
+        if recall_previous:
+            await tracker.recall_if_exists(user_id, msg_type, event)
+        
+        # 发送新消息并获取 message_id
+        message_id = await self._send_and_get_id(event, message_chain)
+        
+        # 追踪新消息
+        if message_id:
+            tracker.track(
+                user_id=user_id,
+                message_id=message_id,
+                msg_type=msg_type,
+                platform=event.get_platform_name(),
+                session_id=event.get_group_id() or user_id
+            )
+        
+        return message_id
+    
+    async def _send_and_get_id(self, event: AstrMessageEvent, 
+                                message_chain: list) -> Optional[int]:
+        """
+        发送消息并获取 message_id（底层实现）
+        
+        Args:
+            event: 消息事件
+            message_chain: 消息链
+            
+        Returns:
+            message_id 或 None
+        """
+        try:
+            platform_name = event.get_platform_name()
+            
+            # OneBot V11 (aiocqhttp) 平台
+            if platform_name == "aiocqhttp":
+                return await self._send_onebot(event, message_chain)
+            
+            # 其他平台：使用默认方式发送（无法获取 message_id）
+            from astrbot.api.event import MessageChain
+            await event.send(MessageChain(message_chain))
+            return None
+            
+        except Exception as e:
+            logger.warning(f"发送消息失败: {e}")
+            return None
+    
+    async def _send_onebot(self, event: AstrMessageEvent, 
+                           message_chain: list) -> Optional[int]:
+        """
+        OneBot V11 发送消息并获取 message_id
+        
+        Args:
+            event: 消息事件
+            message_chain: 消息链
+            
+        Returns:
+            message_id 或 None
+        """
+        try:
+            bot = getattr(event, 'bot', None)
+            if not bot:
+                return None
+            
+            # 转换消息链为 OneBot 格式
+            from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import AiocqhttpMessageEvent
+            from astrbot.api.event import MessageChain
+            
+            messages = await AiocqhttpMessageEvent._parse_onebot_json(MessageChain(message_chain))
+            if not messages:
+                return None
+            
+            # 发送消息并获取返回值
+            group_id = event.get_group_id()
+            if group_id:
+                result = await bot.send_group_msg(group_id=int(group_id), message=messages)
+            else:
+                user_id = event.get_sender_id()
+                result = await bot.send_private_msg(user_id=int(user_id), message=messages)
+            
+            # 提取 message_id
+            if isinstance(result, dict):
+                return result.get("message_id")
+            return None
+            
+        except Exception as e:
+            logger.debug(f"OneBot 发送消息失败: {e}")
+            return None
+
+    async def _send_map_image(self, event: AstrMessageEvent, exp_map, 
+                               region_name: str = "", extra_text: str = "",
+                               recall_previous: bool = True):
+        """
+        发送地图图片（异步生成器），支持撤回上一条地图消息
         
         Args:
             event: 消息事件
             exp_map: 探索地图对象
             region_name: 区域名称
             extra_text: 额外的文字信息（会在图片前发送）
+            recall_previous: 是否撤回上一条地图消息
         """
-        # 先发送额外文字
+        # 先发送额外文字（不追踪，不撤回）
         if extra_text:
             yield event.plain_result(extra_text)
         
@@ -94,12 +204,22 @@ class ExploreHandlers:
         image_bytes = await self._render_map_image(exp_map, region_name=region_name)
         
         if image_bytes:
-            # 成功渲染，发送图片
-            yield event.chain_result([Image.fromBytes(image_bytes)])
+            # 成功渲染，发送图片并追踪
+            message_chain = [Image.fromBytes(image_bytes)]
+            message_id = await self._send_with_recall(
+                event, message_chain, MessageType.MAP, recall_previous
+            )
+            
+            # 如果发送失败（无法获取 message_id），使用 yield 兜底
+            if message_id is None:
+                # 可能是不支持的平台，使用传统方式
+                yield event.chain_result([Image.fromBytes(image_bytes)])
         else:
-            # 渲染失败，回退到文字地图
+            # 渲染失败，回退到文字地图（不追踪）
             map_text = self.wm.render_map(exp_map)
             yield event.plain_result(map_text)
+
+
 
 
 

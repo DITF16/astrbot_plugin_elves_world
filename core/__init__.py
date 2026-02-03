@@ -15,6 +15,11 @@ from .battle import (
     BattleType,
     ActionType,
 )
+from .message_tracker import (
+    MessageTracker,
+    MessageType,
+    get_message_tracker,
+)
 from .world import (
     WorldManager,
     ExplorationMap,
@@ -53,4 +58,10 @@ __all__ = [
     "MapCell",
     "CellType",
     "EventType",
+
+    # 消息追踪
+    "MessageTracker",
+    "MessageType",
+    "get_message_tracker",
 ]
+
