@@ -62,7 +62,7 @@ class PlayerHandlers:
 
         MonsterInstance = self._get_monster_instance_class()
 
-        @session_waiter(timeout=60, record_history_chains=False)
+        @session_waiter(timeout=60, record_history_chains=False, session_id=user_id)
         async def choose_starter(controller: SessionController, ev: AstrMessageEvent):
             choice = ev.message_str.strip()
 
