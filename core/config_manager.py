@@ -1,9 +1,12 @@
 """
 配置管理器 - 统一管理所有游戏配置的加载、保存和热更新
+
+支持异步操作，避免阻塞事件循环
 """
 
 import json
 import shutil
+import asyncio
 from pathlib import Path
 from typing import Dict, Optional, Callable, List
 from threading import Lock
@@ -17,6 +20,7 @@ class ConfigManager:
     - 管理所有JSON配置文件
     - 支持热更新（Web后台修改后自动生效）
     - 线程安全
+    - 支持异步操作（避免阻塞事件循环）
     """
 
     CONFIG_FILES = {
@@ -47,14 +51,14 @@ class ConfigManager:
         self._cache_time: Dict[str, float] = {}
         self._lock = Lock()
 
-        # 更新回调
+        # 更新回调（支持同步和异步回调）
         self._update_callbacks: List[Callable] = []
 
-        # 初始化配置文件
+        # 初始化配置文件（同步，仅在启动时执行一次）
         self._init_config_files()
 
-        # 加载所有配置
-        self.reload_all()
+        # 加载所有配置（同步，仅在启动时执行一次）
+        self._reload_all_sync()
 
     def _init_config_files(self):
         """初始化配置文件，如果不存在则从默认目录复制"""
@@ -65,21 +69,16 @@ class ConfigManager:
             if not target_file.exists() and default_file.exists():
                 shutil.copy(default_file, target_file)
 
-    def reload_all(self):
-        """重新加载所有配置"""
+    # ==================== 同步方法（内部使用）====================
+
+    def _reload_all_sync(self):
+        """同步重新加载所有配置（仅供初始化使用）"""
         with self._lock:
             for config_name in self.CONFIG_FILES:
-                self._load_config(config_name)
+                self._load_config_sync(config_name)
 
-        # 触发更新回调
-        for callback in self._update_callbacks:
-            try:
-                callback()
-            except Exception as e:
-                logger.error(f"配置更新回调执行失败: {e}")
-
-    def _load_config(self, config_name: str) -> Dict:
-        """加载配置文件"""
+    def _load_config_sync(self, config_name: str) -> Dict:
+        """同步加载单个配置文件"""
         filename = self.CONFIG_FILES.get(config_name)
         if not filename:
             return {}
@@ -114,18 +113,8 @@ class ConfigManager:
             self._cache[config_name] = {}
             return {}
 
-    def get(self, config_name: str) -> Dict:
-        """获取配置（从缓存）"""
-        with self._lock:
-            return self._cache.get(config_name, {}).copy()
-
-    def get_item(self, config_name: str, item_id: str) -> Optional[Dict]:
-        """获取配置中的单个项目"""
-        config = self.get(config_name)
-        return config.get(item_id)
-
-    def set(self, config_name: str, data: Dict) -> bool:
-        """设置整个配置"""
+    def _save_config_sync(self, config_name: str, data: Dict) -> bool:
+        """同步保存配置文件"""
         filename = self.CONFIG_FILES.get(config_name)
         if not filename:
             return False
@@ -138,35 +127,90 @@ class ConfigManager:
                     json.dump(data, f, ensure_ascii=False, indent=2)
                 self._cache[config_name] = data
                 self._cache_time[config_name] = time.time()
-
-            # 触发更新回调
-            for callback in self._update_callbacks:
-                try:
-                    callback()
-                except Exception as e:
-                    print(f"配置更新回调执行失败: {e}")
-
             return True
         except Exception as e:
-            print(f"保存配置 {config_name} 失败: {e}")
+            logger.error(f"❌ 保存配置 {config_name} 失败: {e}")
             return False
 
-    def set_item(self, config_name: str, item_id: str, item_data: Dict) -> bool:
-        """设置配置中的单个项目"""
+    # ==================== 异步方法（推荐在协程中使用）====================
+
+    async def reload_all(self):
+        """
+        异步重新加载所有配置
+        
+        在异步上下文中调用此方法不会阻塞事件循环
+        """
+        await asyncio.to_thread(self._reload_all_sync)
+
+        # 触发更新回调
+        await self._trigger_callbacks()
+
+    async def set_async(self, config_name: str, data: Dict) -> bool:
+        """
+        异步设置整个配置
+        
+        Args:
+            config_name: 配置名称
+            data: 配置数据
+            
+        Returns:
+            是否保存成功
+        """
+        success = await asyncio.to_thread(self._save_config_sync, config_name, data)
+        
+        if success:
+            await self._trigger_callbacks()
+        
+        return success
+
+    async def set_item_async(self, config_name: str, item_id: str, item_data: Dict) -> bool:
+        """异步设置配置中的单个项目"""
         config = self.get(config_name)
         config[item_id] = item_data
-        return self.set(config_name, config)
+        return await self.set_async(config_name, config)
 
-    def delete_item(self, config_name: str, item_id: str) -> bool:
-        """删除配置中的单个项目"""
+    async def delete_item_async(self, config_name: str, item_id: str) -> bool:
+        """异步删除配置中的单个项目"""
         config = self.get(config_name)
         if item_id in config:
             del config[item_id]
-            return self.set(config_name, config)
+            return await self.set_async(config_name, config)
         return False
 
+    async def _trigger_callbacks(self):
+        """触发所有更新回调（支持同步和异步回调）"""
+        for callback in self._update_callbacks:
+            try:
+                result = callback()
+                # 如果回调返回协程，则等待它
+                if asyncio.iscoroutine(result):
+                    await result
+            except Exception as e:
+                logger.error(f"配置更新回调执行失败: {e}")
+
+    # ==================== 同步读取方法（从缓存读取，无IO）====================
+
+    def get(self, config_name: str) -> Dict:
+        """
+        获取配置（从缓存）
+        
+        注意：此方法是同步的，因为只读取内存缓存，无磁盘IO
+        """
+        with self._lock:
+            return self._cache.get(config_name, {}).copy()
+
+    def get_item(self, config_name: str, item_id: str) -> Optional[Dict]:
+        """获取配置中的单个项目（从缓存）"""
+        config = self.get(config_name)
+        return config.get(item_id)
+
+
     def register_update_callback(self, callback: Callable):
-        """注册配置更新回调"""
+        """
+        注册配置更新回调
+        
+        回调可以是同步函数或异步函数（async def）
+        """
         self._update_callbacks.append(callback)
 
     # ==================== 便捷属性 ====================
@@ -210,3 +254,4 @@ class ConfigManager:
     def items(self) -> Dict:
         """获取道具配置"""
         return self.get("items")
+

@@ -749,7 +749,7 @@ class WebServer:
                 raise HTTPException(status_code=401, detail="未授权")
 
             try:
-                self.config.reload_all()
+                await self.config.reload_all()  # 异步重载，不阻塞事件循环
                 return JSONResponse({"success": True, "message": "配置已重载"})
             except Exception as e:
                 return JSONResponse({"success": False, "message": str(e)}, status_code=500)

@@ -330,7 +330,7 @@ class MonsterGamePlugin(Star):
         """重新加载游戏配置（管理员）"""
         # TODO: 添加权限检查
         try:
-            self.game_config.reload_all()
+            await self.game_config.reload_all()  # 异步重载，不阻塞事件循环
             self._load_settings()
             yield event.plain_result("✅ 游戏配置已重新加载")
         except Exception as e:
