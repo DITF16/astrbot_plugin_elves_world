@@ -517,7 +517,7 @@ class BattleHandlers:
             f"{battle_text}\n\n"
             f"{skill_menu}\n\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"💡 发送 \"{prefix}数字\" 使用技能（如 {prefix}1）\n"
+            f"💡 发送 \"{prefix}数字\" 使用技能（如 \"{prefix}1\"）\n"
             f"💡 发送 \"{prefix}逃跑\" 逃离战斗\n"
             f"💡 发送 \"{prefix}捕捉\" 尝试捕捉"
         )
@@ -648,7 +648,7 @@ class BattleHandlers:
                         yield event.plain_result("❌ 无效的精灵序号")
                         return
                 except ValueError:
-                    yield event.plain_result(f"❌ 请输入正确的序号，如: {prefix}换 2")
+                    yield event.plain_result(f"❌ 请输入正确的序号，如: \"{prefix}换 2\"")
                     return
             else:
                 # 显示可换的精灵
@@ -660,7 +660,7 @@ class BattleHandlers:
                         hp = m.get("current_hp", 0)
                         max_hp = m.get("max_hp", 1)
                         lines.append(f"{idx + 1}. {name} HP:{hp}/{max_hp}")
-                lines.append(f"发送 {prefix}换 序号 切换，如: {prefix}换 2")
+                lines.append(f"发送 \"{prefix}换 序号\" 切换，如: \"{prefix}换 2\"")
                 yield event.plain_result("\n".join(lines))
                 return
         

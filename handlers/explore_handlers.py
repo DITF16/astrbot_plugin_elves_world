@@ -60,10 +60,14 @@ class ExploreHandlers:
             
             # 异步渲染地图图片
             renderer = get_map_renderer()
+            # 获取动作前缀用于帮助提示
+            action_prefix = self.plugin.game_action_prefix
+            
             image_bytes = await renderer.render_map_async(
                 exp_map, 
                 region_name=region_name,
-                weather_info=weather_info
+                weather_info=weather_info,
+                action_prefix=action_prefix
             )
             return image_bytes
             

@@ -1334,7 +1334,8 @@ class MapImageRenderer:
                                 exp_map: 'ExplorationMap',
                                 region_name: str = "",
                                 weather_info: Optional[Dict] = None,
-                                show_hidden: bool = False) -> bytes:
+                                show_hidden: bool = False,
+                                action_prefix: str = ">") -> bytes:
         """
         异步渲染地图为图片
         
@@ -1362,7 +1363,8 @@ class MapImageRenderer:
             exp_map,
             region_name,
             weather_info,
-            show_hidden
+            show_hidden,
+            action_prefix
         )
         
         # 存入缓存
@@ -1382,8 +1384,8 @@ class MapImageRenderer:
                           exp_map: 'ExplorationMap',
                           region_name: str,
                           weather_info: Optional[Dict],
-                          show_hidden: bool) -> bytes:
-        """同步渲染地图（在线程池中执行）"""
+                          show_hidden: bool,
+                          action_prefix: str = ">") -> bytes:
         from PIL import Image, ImageDraw
         import io
         
@@ -1425,7 +1427,7 @@ class MapImageRenderer:
         y_offset = self._draw_legend(draw, font, emoji_font, total_width, y_offset)
         
         # 5. 绘制状态信息
-        self._draw_status(draw, font, exp_map, total_width, y_offset)
+        self._draw_status(draw, font, exp_map, total_width, y_offset, action_prefix)
 
         
         # 转换为字节
@@ -1614,7 +1616,7 @@ class MapImageRenderer:
         return y + 70
 
     
-    def _draw_status(self, draw, font, exp_map: 'ExplorationMap', width: int, y: int):
+    def _draw_status(self, draw, font, exp_map: 'ExplorationMap', width: int, y: int, action_prefix: str = ">"):
         """绘制状态信息"""
         total_cells = exp_map.get_total_cells()
         explored_percent = exp_map.explored_count / total_cells * 100 if total_cells > 0 else 0
@@ -1630,8 +1632,8 @@ class MapImageRenderer:
             draw.text((width // 2, y), pos_text,
                       fill=self.COLORS['text'], font=font)
             
-            # 操作提示
-            hint_text = "发送 >坐标 移动(如 >B2)，>离开 退出"
+            # 操作提示 - 使用动态前缀并用双引号包裹
+            hint_text = f"发送 \"{action_prefix}坐标\" 移动，\"{action_prefix}离开\" 退出"
             draw.text((self.padding + 10, y + 28), hint_text,
                       fill=self.COLORS['text_dim'], font=font)
     
