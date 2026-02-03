@@ -31,7 +31,7 @@ class PlayerManager:
     # 体力恢复配置
     STAMINA_RECOVERY_MINUTES = 5  # 每5分钟恢复1点体力
     MAX_MONSTER_CAPACITY = 100  # 精灵背包上限
-    MAX_TEAM_SIZE = 6  # 队伍上限
+    MAX_TEAM_SIZE = 3  # 队伍上限（战斗时可切换的精灵数量）
 
     def __init__(self, db: "Database", config_manager: "ConfigManager" = None):
         """

@@ -18,7 +18,7 @@
       "max_team_size": {
         "description": "队伍上限",
         "type": "int",
-        "default": 6,
+"default": 3,
         "hint": "队伍中最多可携带的精灵数量"
       },
       "max_monster_capacity": {

@@ -130,14 +130,10 @@ class MonsterHandlers:
 
         yield event.plain_result(detail_text)
 
-    async def cmd_team(self, event: AstrMessageEvent, *args):
+    async def cmd_team(self, event: AstrMessageEvent):
         """
-        队伍管理
-        指令:
-        /精灵 队伍 - 查看队伍
-        /精灵 队伍 设置 1 3 5 - 设置队伍
-        /精灵 队伍 加入 2 - 添加到队伍
-        /精灵 队伍 移除 1 - 从队伍移除
+        查看当前队伍（最多3只，用于战斗）
+        指令: /精灵 队伍
         """
         user_id = event.get_sender_id()
 
@@ -145,17 +141,16 @@ class MonsterHandlers:
             yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
             return
 
-        # 无参数：查看队伍
-        if not args:
-            team = await self.pm.get_team(user_id)
-            if not team:
-                yield event.plain_result(
-                    "👥 队伍为空！\n"
-                    "发送 /精灵 队伍 设置 1 2 3 来设置队伍"
-                )
-                return
+        team = await self.pm.get_team(user_id)
+        monsters = await self.pm.get_monsters(user_id)
+        
+        # 获取不在队伍中的精灵（背包中待命的）
+        team_ids = {m.get("instance_id") for m in team}
+        bench_monsters = [m for m in monsters if m.get("instance_id") not in team_ids]
 
-            lines = ["👥 当前队伍", "━━━━━━━━━━━━━━━━━━━━"]
+        lines = ["⚔️ 战斗队伍 (最多3只)", "━━━━━━━━━━━━━━━━━━━━"]
+        
+        if team:
             for i, m in enumerate(team, 1):
                 name = m.get("nickname") or m.get("name", "???")
                 level = m.get("level", 1)
@@ -167,99 +162,128 @@ class MonsterHandlers:
                 status_icon = self._get_status_icon(status)
 
                 lines.append(f"{i}. {name} Lv.{level} {status_icon}")
-                lines.append(f"　 HP: {hp_bar} {current_hp}/{max_hp}")
+                lines.append(f"   HP: {hp_bar} {current_hp}/{max_hp}")
+        else:
+            lines.append("（空）")
+        
+        lines.append("")
+        lines.append(f"📦 背包待命: {len(bench_monsters)} 只")
+        lines.append("━━━━━━━━━━━━━━━━━━━━")
+        lines.append("💡 /精灵 上阵 <背包序号> - 从背包上阵")
+        lines.append("💡 /精灵 下阵 <队伍位置> - 移回背包")
+        
+        yield event.plain_result("\n".join(lines))
 
+    async def cmd_deploy(self, event: AstrMessageEvent, index: int = 0):
+        """
+        上阵：从背包选择精灵加入战斗队伍
+        指令: /精灵 上阵 <背包序号>
+        """
+        user_id = event.get_sender_id()
+
+        if not await self.pm.player_exists(user_id):
+            yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
+            return
+
+        if index <= 0:
+            yield event.plain_result(
+                "⚔️ 上阵精灵\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
+                "用法: /精灵 上阵 <背包序号>\n"
+                "示例: /精灵 上阵 1\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
+                "💡 先用 /精灵 背包 查看序号"
+            )
+            return
+
+        monsters = await self.pm.get_monsters(user_id)
+        if not monsters:
+            yield event.plain_result("❌ 你没有精灵")
+            return
+
+        if index < 1 or index > len(monsters):
+            yield event.plain_result(f"❌ 请输入 1 到 {len(monsters)} 之间的序号")
+            return
+
+        monster = monsters[index - 1]
+        monster_id = monster.get("instance_id")
+        monster_name = monster.get("nickname") or monster.get("name", "???")
+
+        # 检查是否已在队伍中
+        team = await self.pm.get_team(user_id)
+        team_ids = [m.get("instance_id") for m in team]
+        
+        if monster_id in team_ids:
+            yield event.plain_result(f"❌ {monster_name} 已经在队伍中了")
+            return
+
+        # 检查队伍是否已满（最多3只）
+        if len(team) >= 3:
+            yield event.plain_result(
+                f"❌ 队伍已满（3/3）\n"
+                f"请先用 /精灵 下阵 <位置> 移除一只精灵"
+            )
+            return
+
+        if await self.pm.add_to_team(user_id, monster_id):
+            new_pos = len(team) + 1
+            yield event.plain_result(
+                f"✅ {monster_name} 已上阵！\n"
+                f"当前队伍位置: {new_pos}/3"
+            )
+        else:
+            yield event.plain_result("❌ 上阵失败")
+
+    async def cmd_withdraw(self, event: AstrMessageEvent, position: int = 0):
+        """
+        下阵：将精灵从战斗队伍移回背包
+        指令: /精灵 下阵 <队伍位置>
+        """
+        user_id = event.get_sender_id()
+
+        if not await self.pm.player_exists(user_id):
+            yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
+            return
+
+        team = await self.pm.get_team(user_id)
+        
+        if not team:
+            yield event.plain_result("❌ 队伍是空的，没有可下阵的精灵")
+            return
+
+        if position <= 0:
+            lines = ["⚔️ 下阵精灵", "━━━━━━━━━━━━━━━━━━━━"]
+            for i, m in enumerate(team, 1):
+                name = m.get("nickname") or m.get("name", "???")
+                level = m.get("level", 1)
+                lines.append(f"{i}. {name} Lv.{level}")
             lines.append("━━━━━━━━━━━━━━━━━━━━")
-            lines.append("发送 /精灵 队伍 设置 1 2 3 调整队伍")
+            lines.append("用法: /精灵 下阵 <队伍位置>")
+            lines.append("示例: /精灵 下阵 1")
             yield event.plain_result("\n".join(lines))
             return
 
-        action = args[0]
+        if position < 1 or position > len(team):
+            yield event.plain_result(f"❌ 请输入 1 到 {len(team)} 之间的位置")
+            return
 
-        # 设置队伍
-        if action in ["设置", "set"] and len(args) > 1:
-            monsters = await self.pm.get_monsters(user_id)
-            if not monsters:
-                yield event.plain_result("❌ 你没有精灵")
-                return
+        # 队伍至少保留1只精灵
+        if len(team) <= 1:
+            yield event.plain_result("❌ 队伍至少需要保留1只精灵")
+            return
 
-            try:
-                indices = [int(x) for x in args[1:]]
-            except ValueError:
-                yield event.plain_result("❌ 请输入正确的序号，如: /精灵 队伍 设置 1 2 3")
-                return
+        monster = team[position - 1]
+        monster_id = monster.get("instance_id")
+        monster_name = monster.get("nickname") or monster.get("name", "???")
 
-            monster_ids = []
-            for idx in indices:
-                if 1 <= idx <= len(monsters):
-                    mid = monsters[idx - 1].get("instance_id")
-                    if mid and mid not in monster_ids:
-                        monster_ids.append(mid)
-
-            if not monster_ids:
-                yield event.plain_result("❌ 没有有效的精灵序号")
-                return
-
-            if len(monster_ids) > 6:
-                yield event.plain_result("❌ 队伍最多6只精灵")
-                return
-
-            if await self.pm.set_team(user_id, monster_ids):
-                yield event.plain_result(f"✅ 队伍设置成功！共 {len(monster_ids)} 只精灵")
-            else:
-                yield event.plain_result("❌ 设置失败")
-
-        # 加入队伍
-        elif action in ["加入", "添加", "add"] and len(args) > 1:
-            try:
-                idx = int(args[1])
-            except ValueError:
-                yield event.plain_result("❌ 请输入正确的序号")
-                return
-
-            monsters = await self.pm.get_monsters(user_id)
-            if idx < 1 or idx > len(monsters):
-                yield event.plain_result(f"❌ 请输入 1 到 {len(monsters)} 之间的序号")
-                return
-
-            monster_id = monsters[idx - 1].get("instance_id")
-            monster_name = monsters[idx - 1].get("nickname") or monsters[idx - 1].get("name", "???")
-
-            if await self.pm.add_to_team(user_id, monster_id):
-                yield event.plain_result(f"✅ {monster_name} 已加入队伍！")
-            else:
-                yield event.plain_result("❌ 添加失败（队伍已满或已在队伍中）")
-
-        # 移除队伍
-        elif action in ["移除", "移出", "remove"] and len(args) > 1:
-            try:
-                pos = int(args[1])
-            except ValueError:
-                yield event.plain_result("❌ 请输入正确的位置")
-                return
-
-            team = await self.pm.get_team(user_id)
-            if pos < 1 or pos > len(team):
-                yield event.plain_result(f"❌ 请输入 1 到 {len(team)} 之间的位置")
-                return
-
-            monster_id = team[pos - 1].get("instance_id")
-            monster_name = team[pos - 1].get("nickname") or team[pos - 1].get("name", "???")
-
-            if await self.pm.remove_from_team(user_id, monster_id):
-                yield event.plain_result(f"✅ {monster_name} 已从队伍移除")
-            else:
-                yield event.plain_result("❌ 移除失败（队伍至少需要1只精灵）")
-
-        else:
+        if await self.pm.remove_from_team(user_id, monster_id):
             yield event.plain_result(
-                "👥 队伍管理指令：\n"
-                "━━━━━━━━━━━━━━━━━━━━\n"
-                "/精灵 队伍 - 查看当前队伍\n"
-                "/精灵 队伍 设置 1 3 5 - 设置队伍\n"
-                "/精灵 队伍 加入 2 - 添加精灵\n"
-                "/精灵 队伍 移除 1 - 移除精灵"
+                f"✅ {monster_name} 已下阵，移回背包\n"
+                f"当前队伍: {len(team) - 1}/3"
             )
+        else:
+            yield event.plain_result("❌ 下阵失败")
+
 
 
     async def cmd_evolve(self, event: AstrMessageEvent, index: int = 0):

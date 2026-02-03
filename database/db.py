@@ -514,12 +514,13 @@ class Database:
                 ''', (now, owner_id))
 
                 # 设置新队伍
-                for position, instance_id in enumerate(monster_ids[:6]):  # 最多6只
+                for position, instance_id in enumerate(monster_ids[:3]):  # 最多3只
                     cursor.execute('''
                         UPDATE monsters 
                         SET is_in_team = 1, team_position = ?, updated_at = ?
                         WHERE instance_id = ? AND owner_id = ?
                     ''', (position, now, instance_id, owner_id))
+
 
                 return True
 

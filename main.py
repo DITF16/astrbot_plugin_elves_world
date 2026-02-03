@@ -234,10 +234,23 @@ class MonsterGamePlugin(Star):
             yield result
 
     @pm_group.command("队伍")
-    async def cmd_team(self, event: AstrMessageEvent, *args):
-        """队伍管理"""
-        async for result in self.monster_handlers.cmd_team(event, *args):
+    async def cmd_team(self, event: AstrMessageEvent):
+        """查看战斗队伍"""
+        async for result in self.monster_handlers.cmd_team(event):
             yield result
+
+    @pm_group.command("上阵")
+    async def cmd_deploy(self, event: AstrMessageEvent, index: int = 0):
+        """从背包上阵精灵到队伍"""
+        async for result in self.monster_handlers.cmd_deploy(event, index):
+            yield result
+
+    @pm_group.command("下阵")
+    async def cmd_withdraw(self, event: AstrMessageEvent, position: int = 0):
+        """将精灵从队伍移回背包"""
+        async for result in self.monster_handlers.cmd_withdraw(event, position):
+            yield result
+
 
     @pm_group.command("进化")
     async def cmd_evolve(self, event: AstrMessageEvent, index: int = 0):
