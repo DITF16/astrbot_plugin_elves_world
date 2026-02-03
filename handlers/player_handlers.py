@@ -5,13 +5,24 @@
 
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api import logger
-from astrbot.core.utils.session_waiter import session_waiter, SessionController
+from astrbot.core.utils.session_waiter import session_waiter, SessionController, SessionFilter
 
 from typing import TYPE_CHECKING
 import random
 
 if TYPE_CHECKING:
     from ..main import MonsterGamePlugin
+
+
+class UserSessionFilter(SessionFilter):
+    """按用户隔离的会话过滤器（同一个群里不同用户有独立会话）"""
+    
+    def __init__(self, user_id: str):
+        self.user_id = user_id
+    
+    def filter(self, event: AstrMessageEvent) -> str:
+        """返回 unified_msg_origin + user_id 作为会话标识符"""
+        return f"{event.unified_msg_origin}:{self.user_id}"
 
 
 class PlayerHandlers:
@@ -62,7 +73,7 @@ class PlayerHandlers:
 
         MonsterInstance = self._get_monster_instance_class()
 
-        @session_waiter(timeout=60, record_history_chains=False, session_id=user_id)
+        @session_waiter(timeout=60, record_history_chains=False)
         async def choose_starter(controller: SessionController, ev: AstrMessageEvent):
             choice = ev.message_str.strip()
 
@@ -110,7 +121,7 @@ class PlayerHandlers:
             controller.stop()
 
         try:
-            await choose_starter(event)
+            await choose_starter(event, session_filter=UserSessionFilter(user_id))
         except TimeoutError:
             yield event.plain_result("⏰ 选择超时啦，请重新发送 /精灵 注册")
         finally:
