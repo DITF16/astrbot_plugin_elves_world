@@ -231,7 +231,7 @@ class ExploreHandlers:
         """
         user_id = event.get_sender_id()
 
-        player = self.pm.get_player(user_id)
+        player = await self.pm.get_player(user_id)
         if not player:
             yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
             return
@@ -251,7 +251,7 @@ class ExploreHandlers:
             description = region.get("description", "")[:20]
 
             # 检查是否可进入
-            can_enter, reason = self.pm.can_enter_region(user_id, rid)
+            can_enter, reason = await self.pm.can_enter_region(user_id, rid)
             lock_icon = "🔓" if can_enter else "🔒"
 
             lines.append(f"{lock_icon} {name}")
@@ -276,7 +276,7 @@ class ExploreHandlers:
         user_id = event.get_sender_id()
         umo = event.unified_msg_origin
 
-        player = self.pm.get_player(user_id)
+        player = await self.pm.get_player(user_id)
         if not player:
             yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
             return
@@ -325,7 +325,7 @@ class ExploreHandlers:
         region = self.wm.get_region(region_id)
 
         # 检查进入条件
-        can_enter, reason = self.pm.can_enter_region(user_id, region_id)
+        can_enter, reason = await self.pm.can_enter_region(user_id, region_id)
         if not can_enter:
             yield event.plain_result(f"🔒 无法进入: {reason}")
             return
@@ -340,7 +340,7 @@ class ExploreHandlers:
             return
 
         # 检查队伍
-        team = self.pm.get_team(user_id)
+        team = await self.pm.get_team(user_id)
         if not team:
             yield event.plain_result(
                 "❌ 队伍为空！\n"
@@ -361,8 +361,7 @@ class ExploreHandlers:
             self.wm.complete_exploration(user_id)
 
         # 消耗体力
-        self.pm.consume_stamina(user_id, stamina_cost)
-
+        await self.pm.consume_stamina(user_id, stamina_cost)
         # 生成地图
         exp_map = self.wm.generate_map(
             region_id=region_id,
@@ -412,9 +411,9 @@ class ExploreHandlers:
             # 发放奖励
             rewards = result.get("rewards", {})
             if rewards.get("coins", 0) > 0:
-                self.pm.add_currency(user_id, coins=rewards["coins"])
+                await self.pm.add_currency(user_id, coins=rewards["coins"])
             if rewards.get("exp", 0) > 0:
-                self.pm.add_exp(user_id, rewards["exp"])
+                await self.pm.add_exp(user_id, rewards["exp"])
             
             # 清除游戏状态
             self.plugin.db.clear_game_state(user_id)
@@ -445,11 +444,12 @@ class ExploreHandlers:
         target_x, target_y = coord
         
         # 执行探索
+        player_data = await self.pm.get_player(user_id)
         result = self.wm.explore_cell(
             player_id=user_id,
             target_x=target_x,
             target_y=target_y,
-            player_level=self.pm.get_player(user_id).get("level", 1)
+            player_level=player_data.get("level", 1) if player_data else 1
         )
         
         if not result.success:
@@ -479,30 +479,30 @@ class ExploreHandlers:
         
         # 非战斗结果 - 处理奖励
         if result.coins_gained > 0:
-            self.pm.add_currency(user_id, coins=result.coins_gained)
+            await self.pm.add_currency(user_id, coins=result.coins_gained)
         
         for item in result.items_gained:
             item_id = item.get("item_id", "")
             amount = item.get("amount", 1)
             if item_id == "_diamonds":
-                self.pm.add_currency(user_id, diamonds=amount)
+                await self.pm.add_currency(user_id, diamonds=amount)
             elif item_id:
-                self.pm.add_item(user_id, item_id, amount)
+                await self.pm.add_item(user_id, item_id, amount)
         
         if result.exp_gained > 0:
-            self.pm.add_exp(user_id, result.exp_gained)
+            await self.pm.add_exp(user_id, result.exp_gained)
         
         # 处理事件效果
         if result.event_type == EventType.HEAL:
-            self.pm.heal_team(user_id)
+            await self.pm.heal_team(user_id)
         elif result.event_type == EventType.TRAP:
             # 简化处理：队伍受到伤害
-            team = self.pm.get_team(user_id)
+            team = await self.pm.get_team(user_id)
             for m_data in team:
                 if m_data.get("current_hp", 0) > 0:
                     damage = int(m_data["max_hp"] * 0.15)
                     m_data["current_hp"] = max(1, m_data["current_hp"] - damage)
-                    self.pm.update_monster_from_dict(m_data["instance_id"], m_data)
+                    await self.pm.update_monster_from_dict(m_data["instance_id"], m_data)
         
         # 显示更新后的地图（图片）
         exp_map = self.wm.get_active_map(user_id)
@@ -551,9 +551,9 @@ class ExploreHandlers:
         # 发放奖励
         rewards = result.get("rewards", {})
         if rewards.get("coins", 0) > 0:
-            self.pm.add_currency(user_id, coins=rewards["coins"])
+            await self.pm.add_currency(user_id, coins=rewards["coins"])
         if rewards.get("exp", 0) > 0:
-            self.pm.add_exp(user_id, rewards["exp"])
+            await self.pm.add_exp(user_id, rewards["exp"])
 
         yield event.plain_result(result["message"])
 

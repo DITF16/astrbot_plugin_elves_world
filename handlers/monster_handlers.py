@@ -1,6 +1,7 @@
 """
-精灵管理指令处理器
+精灵管理指令处理器（异步版本）
 - 背包、详情、队伍、进化、改名等
+- 所有 PlayerManager 调用均使用 await
 """
 
 from astrbot.api.event import filter, AstrMessageEvent
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class MonsterHandlers:
-    """精灵管理指令处理器"""
+    """精灵管理指令处理器（异步版本）"""
 
     def __init__(self, plugin: "MonsterGamePlugin"):
         self.plugin = plugin
@@ -60,11 +61,11 @@ class MonsterHandlers:
         """
         user_id = event.get_sender_id()
 
-        if not self.pm.player_exists(user_id):
+        if not await self.pm.player_exists(user_id):
             yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
             return
 
-        monsters = self.pm.get_monsters(user_id)
+        monsters = await self.pm.get_monsters(user_id)
 
         if not monsters:
             yield event.plain_result(
@@ -114,7 +115,7 @@ class MonsterHandlers:
         user_id = event.get_sender_id()
         MonsterInstance = self._get_monster_instance_class()
 
-        monsters = self.pm.get_monsters(user_id)
+        monsters = await self.pm.get_monsters(user_id)
         if not monsters:
             yield event.plain_result("📦 你还没有精灵")
             return
@@ -140,13 +141,13 @@ class MonsterHandlers:
         """
         user_id = event.get_sender_id()
 
-        if not self.pm.player_exists(user_id):
+        if not await self.pm.player_exists(user_id):
             yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
             return
 
         # 无参数：查看队伍
         if not args:
-            team = self.pm.get_team(user_id)
+            team = await self.pm.get_team(user_id)
             if not team:
                 yield event.plain_result(
                     "👥 队伍为空！\n"
@@ -177,7 +178,7 @@ class MonsterHandlers:
 
         # 设置队伍
         if action in ["设置", "set"] and len(args) > 1:
-            monsters = self.pm.get_monsters(user_id)
+            monsters = await self.pm.get_monsters(user_id)
             if not monsters:
                 yield event.plain_result("❌ 你没有精灵")
                 return
@@ -203,7 +204,7 @@ class MonsterHandlers:
                 yield event.plain_result("❌ 队伍最多6只精灵")
                 return
 
-            if self.pm.set_team(user_id, monster_ids):
+            if await self.pm.set_team(user_id, monster_ids):
                 yield event.plain_result(f"✅ 队伍设置成功！共 {len(monster_ids)} 只精灵")
             else:
                 yield event.plain_result("❌ 设置失败")
@@ -216,7 +217,7 @@ class MonsterHandlers:
                 yield event.plain_result("❌ 请输入正确的序号")
                 return
 
-            monsters = self.pm.get_monsters(user_id)
+            monsters = await self.pm.get_monsters(user_id)
             if idx < 1 or idx > len(monsters):
                 yield event.plain_result(f"❌ 请输入 1 到 {len(monsters)} 之间的序号")
                 return
@@ -224,7 +225,7 @@ class MonsterHandlers:
             monster_id = monsters[idx - 1].get("instance_id")
             monster_name = monsters[idx - 1].get("nickname") or monsters[idx - 1].get("name", "???")
 
-            if self.pm.add_to_team(user_id, monster_id):
+            if await self.pm.add_to_team(user_id, monster_id):
                 yield event.plain_result(f"✅ {monster_name} 已加入队伍！")
             else:
                 yield event.plain_result("❌ 添加失败（队伍已满或已在队伍中）")
@@ -237,7 +238,7 @@ class MonsterHandlers:
                 yield event.plain_result("❌ 请输入正确的位置")
                 return
 
-            team = self.pm.get_team(user_id)
+            team = await self.pm.get_team(user_id)
             if pos < 1 or pos > len(team):
                 yield event.plain_result(f"❌ 请输入 1 到 {len(team)} 之间的位置")
                 return
@@ -245,7 +246,7 @@ class MonsterHandlers:
             monster_id = team[pos - 1].get("instance_id")
             monster_name = team[pos - 1].get("nickname") or team[pos - 1].get("name", "???")
 
-            if self.pm.remove_from_team(user_id, monster_id):
+            if await self.pm.remove_from_team(user_id, monster_id):
                 yield event.plain_result(f"✅ {monster_name} 已从队伍移除")
             else:
                 yield event.plain_result("❌ 移除失败（队伍至少需要1只精灵）")
@@ -260,6 +261,7 @@ class MonsterHandlers:
                 "/精灵 队伍 移除 1 - 移除精灵"
             )
 
+
     async def cmd_evolve(self, event: AstrMessageEvent, index: int = 0):
         """
         进化精灵
@@ -268,7 +270,7 @@ class MonsterHandlers:
         user_id = event.get_sender_id()
         MonsterInstance = self._get_monster_instance_class()
 
-        monsters = self.pm.get_monsters(user_id)
+        monsters = await self.pm.get_monsters(user_id)
         if not monsters:
             yield event.plain_result("❌ 你还没有精灵")
             return
@@ -322,7 +324,7 @@ class MonsterHandlers:
             return
 
         # 保存
-        self.pm.update_monster(monster)
+        await self.pm.update_monster(monster)
 
         yield event.plain_result(
             f"🎊 恭喜！\n"
@@ -340,7 +342,7 @@ class MonsterHandlers:
         user_id = event.get_sender_id()
         MonsterInstance = self._get_monster_instance_class()
 
-        monsters = self.pm.get_monsters(user_id)
+        monsters = await self.pm.get_monsters(user_id)
         if not monsters:
             yield event.plain_result("❌ 你还没有精灵")
             return
@@ -367,7 +369,7 @@ class MonsterHandlers:
         old_display = monster.get_display_name()
 
         monster.set_nickname(new_name)
-        self.pm.update_monster(monster)
+        await self.pm.update_monster(monster)
 
         yield event.plain_result(f"✅ 已将 {old_display} 改名为 {new_name}")
 
@@ -378,7 +380,7 @@ class MonsterHandlers:
         """
         user_id = event.get_sender_id()
 
-        monsters = self.pm.get_monsters(user_id)
+        monsters = await self.pm.get_monsters(user_id)
         if not monsters:
             yield event.plain_result("❌ 你还没有精灵")
             return
@@ -400,7 +402,7 @@ class MonsterHandlers:
             return
 
         # 确认放生
-        if self.pm.release_monster(user_id, instance_id):
+        if await self.pm.release_monster(user_id, instance_id):
             yield event.plain_result(
                 f"👋 {monster_name} 被放归自然了...\n"
                 f"希望它能在野外快乐生活"

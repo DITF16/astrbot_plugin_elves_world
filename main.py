@@ -101,11 +101,11 @@ class MonsterGamePlugin(Star):
         user_id = event.get_sender_id()
         
         # 检查玩家是否存在
-        if not self.db.player_exists(user_id):
+        if not await self.db.async_player_exists(user_id):
             return  # 玩家不存在，忽略
         
         # 获取玩家游戏状态
-        state, state_data = self.db.get_game_state(user_id)
+        state, state_data = await self.db.async_get_game_state(user_id)
         
         if not state:
             return  # 玩家不在游戏状态中，忽略
@@ -340,7 +340,7 @@ class MonsterGamePlugin(Star):
     @pm_group.command("统计")
     async def cmd_stats(self, event: AstrMessageEvent):
         """查看游戏统计（管理员）"""
-        total_players = self.db.get_total_players()
+        total_players = await self.db.async_get_total_players()
 
         yield event.plain_result(
             f"📊 游戏统计\n"

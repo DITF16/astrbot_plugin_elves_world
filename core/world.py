@@ -1284,7 +1284,7 @@ class MapImageRenderer:
         plugin_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
         # 使用插件自带字体（跨平台统一）
-        font_path = os.path.join(plugin_dir, "assets", "fonts", "NotoColorEmoji.ttf")
+        font_path = os.path.join(plugin_dir, "assets", "fonts", "seguiemj.ttf")
         
         if os.path.exists(font_path):
             try:

@@ -201,7 +201,7 @@ class BattleHandlers:
         user_id = event.get_sender_id()
         umo = event.unified_msg_origin
 
-        player = self.pm.get_player(user_id)
+        player = await self.pm.get_player(user_id)
         if not player:
             yield event.plain_result("❌ 你还不是训练师哦，发送 /精灵 注册")
             return
@@ -221,7 +221,7 @@ class BattleHandlers:
             return
 
         # 检查队伍
-        team = self.pm.get_team(user_id)
+        team = await self.pm.get_team(user_id)
         if not team:
             yield event.plain_result(
                 "❌ 队伍为空！\n"
@@ -247,7 +247,7 @@ class BattleHandlers:
             )
             return
 
-        self.pm.consume_stamina(user_id, stamina_cost)
+        await self.pm.consume_stamina(user_id, stamina_cost)
 
         # 随机生成野生精灵
         monsters = self.config.monsters
@@ -307,7 +307,7 @@ class BattleHandlers:
         """
         MonsterInstance, BattleState, BattleAction, ActionType, BattleType = self._get_imports()
 
-        team = self.pm.get_team(user_id)
+        team = await self.pm.get_team(user_id)
 
         if is_boss:
             battle = self.battle_system.create_boss_battle(
@@ -464,7 +464,7 @@ class BattleHandlers:
 
             # 战斗继续 - 保存精灵状态
             for m_data in battle.player_team:
-                self.pm.update_monster_from_dict(
+                await self.pm.update_monster_from_dict(
                     m_data.get("instance_id", ""),
                     m_data
                 )
@@ -515,17 +515,17 @@ class BattleHandlers:
         if turn_result.winner == "player":
             # 胜利
             # 应用经验和金币倍率（包括玩家buff）
-            exp_buff = self.pm.get_buff_multiplier(user_id, "exp_rate")
-            coin_buff = self.pm.get_buff_multiplier(user_id, "coin_rate")
+            exp_buff = await self.pm.get_buff_multiplier(user_id, "exp_rate")
+            coin_buff = await self.pm.get_buff_multiplier(user_id, "coin_rate")
             exp_gained = int(battle.exp_gained * self.plugin.exp_multiplier * exp_buff)
             coins_gained = int(battle.coins_gained * self.plugin.coin_multiplier * coin_buff)
 
             # 发放奖励
-            self.pm.add_currency(user_id, coins=coins_gained)
-            self.pm.record_battle(user_id, is_win=True)
+            await self.pm.add_currency(user_id, coins=coins_gained)
+            await self.pm.record_battle(user_id, is_win=True)
 
             # 精灵获得经验
-            team = self.pm.get_team(user_id)
+            team = await self.pm.get_team(user_id)
             level_up_messages = []
             active_count = sum(1 for m in team if m.get("current_hp", 0) > 0)
             exp_each = exp_gained // max(1, active_count)
@@ -544,14 +544,14 @@ class BattleHandlers:
                                 f"✨ {monster.get_display_name()} 可以进化了！"
                             )
 
-                    self.pm.update_monster(monster)
+                    await self.pm.update_monster(monster)
 
             # 更新探索地图状态
             exp_map = self.world_manager.get_active_map(user_id)
             if exp_map:
                 if battle.battle_type == BattleType.BOSS:
                     self.world_manager.mark_boss_defeated(user_id)
-                    self.pm.record_boss_clear(user_id, battle.boss_id)
+                    await self.pm.record_boss_clear(user_id, battle.boss_id)
                 else:
                     self.world_manager.mark_monster_defeated(user_id)
             
@@ -581,7 +581,7 @@ class BattleHandlers:
 
         
         elif turn_result.winner == "enemy":
-            self.pm.record_battle(user_id, is_win=False)
+            await self.pm.record_battle(user_id, is_win=False)
             await self._recall_battle_message(event, user_id)
             yield event.plain_result(
                 f"{turn_messages}\n\n"
@@ -607,7 +607,7 @@ class BattleHandlers:
             return
         
         umo = event.unified_msg_origin
-        team = self.pm.get_team(user_id)
+        team = await self.pm.get_team(user_id)
         
         monster_data = state_data.get("monster_data", {})
         weather = state_data.get("weather", "clear")
@@ -712,7 +712,7 @@ class BattleHandlers:
             
             if not item_name:
                 # 显示可用物品列表
-                inventory = self.pm.get_inventory(user_id)
+                inventory = await self.pm.get_inventory(user_id)
                 usable_items = []
                 for item_id, count in inventory.items():
                     item = self.config.get_item("items", item_id)
@@ -743,7 +743,7 @@ class BattleHandlers:
                 return
             
             # 检查是否拥有该物品
-            if not self.pm.has_item(user_id, item["id"]):
+            if not await self.pm.has_item(user_id, item["id"]):
                 yield event.plain_result(f"❌ 你没有 {item['name']}")
                 return
             
@@ -754,7 +754,7 @@ class BattleHandlers:
                 return
             
             # 扣除物品
-            self.pm.use_item(user_id, item["id"])
+            await self.pm.use_item(user_id, item["id"])
             
             # 构建使用物品的行动
             battle_action = BattleAction(
@@ -846,7 +846,7 @@ class BattleHandlers:
         
         # 战斗继续 - 保存精灵状态
         for m_data in battle.player_team:
-            self.pm.update_monster_from_dict(m_data.get("instance_id", ""), m_data)
+            await self.pm.update_monster_from_dict(m_data.get("instance_id", ""), m_data)
         
         # 检查是否需要换精灵
         if turn_result.player_monster_fainted:
@@ -889,17 +889,17 @@ class BattleHandlers:
         
         if turn_result.winner == "player":
             # 胜利
-            exp_buff = self.pm.get_buff_multiplier(user_id, "exp_rate")
-            coin_buff = self.pm.get_buff_multiplier(user_id, "coin_rate")
+            exp_buff = await self.pm.get_buff_multiplier(user_id, "exp_rate")
+            coin_buff = await self.pm.get_buff_multiplier(user_id, "coin_rate")
             exp_gained = int(battle.exp_gained * self.plugin.exp_multiplier * exp_buff)
             coins_gained = int(battle.coins_gained * self.plugin.coin_multiplier * coin_buff)
             
             # 发放奖励
-            self.pm.add_currency(user_id, coins=coins_gained)
-            self.pm.record_battle(user_id, is_win=True)
+            await self.pm.add_currency(user_id, coins=coins_gained)
+            await self.pm.record_battle(user_id, is_win=True)
             
             # 精灵获得经验
-            team = self.pm.get_team(user_id)
+            team = await self.pm.get_team(user_id)
             level_up_messages = []
             active_count = sum(1 for m in team if m.get("current_hp", 0) > 0)
             exp_each = exp_gained // max(1, active_count)
@@ -914,14 +914,14 @@ class BattleHandlers:
                         if result["can_evolve"]:
                             level_up_messages.append(f"✨ {monster.get_display_name()} 可以进化了！")
                     
-                    self.pm.update_monster(monster)
+                    await self.pm.update_monster(monster)
             
             # 更新探索地图状态
             exp_map = self.world_manager.get_active_map(user_id)
             if exp_map:
                 if battle.battle_type == BattleType.BOSS:
                     self.world_manager.mark_boss_defeated(user_id)
-                    self.pm.record_boss_clear(user_id, battle.boss_id)
+                    await self.pm.record_boss_clear(user_id, battle.boss_id)
                 else:
                     self.world_manager.mark_monster_defeated(user_id)
             
@@ -949,7 +949,7 @@ class BattleHandlers:
             yield event.plain_result(f"{turn_messages}")
         
         elif turn_result.winner == "enemy":
-            self.pm.record_battle(user_id, is_win=False)
+            await self.pm.record_battle(user_id, is_win=False)
             # 🔄 战斗结束，撤回最后的战斗消息
             await self._recall_battle_message(event, user_id)
             yield event.plain_result(
