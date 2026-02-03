@@ -282,7 +282,7 @@ class ExploreHandlers:
             return
 
         # 检查是否在战斗中
-        if self.battle_handlers and self.battle_handlers.get_active_battle(umo):
+        if self.battle_handlers and self.battle_handlers.get_active_battle(umo, user_id):
             yield event.plain_result(
                 "⚔️ 你正在战斗中！\n"
                 "请先完成战斗"

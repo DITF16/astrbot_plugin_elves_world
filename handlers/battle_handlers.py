@@ -6,17 +6,27 @@
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api import logger
 # 不再需要 session_waiter，改用数据库状态 + 前缀触发
-# from astrbot.core.utils.session_waiter import session_waiter, SessionController
+from astrbot.core.utils.session_waiter import session_waiter, SessionController, SessionFilter
 
 from typing import TYPE_CHECKING, Dict, Optional
 from ..core.message_tracker import get_message_tracker, MessageType
 
 import random
 
-from astrbot.core.utils.session_waiter import session_waiter, SessionController
 
 if TYPE_CHECKING:
     from ..main import MonsterGamePlugin
+
+
+class UserSessionFilter(SessionFilter):
+    """按用户隔离的会话过滤器（同一个群里不同用户有独立会话）"""
+    
+    def __init__(self, user_id: str):
+        self.user_id = user_id
+    
+    def filter(self, event: AstrMessageEvent) -> str:
+        """返回 unified_msg_origin + user_id 作为会话标识符"""
+        return f"{event.unified_msg_origin}:{self.user_id}"
 
 
 class BattleHandlers:
@@ -29,7 +39,7 @@ class BattleHandlers:
         self.battle_system = plugin.battle_system
         self.world_manager = plugin.world_manager
 
-        # 活跃战斗 {unified_msg_origin: BattleState}
+        # 活跃战斗 {unified_msg_origin:user_id: BattleState} - 用户级别隔离
         self._active_battles: Dict[str, "BattleState"] = {}
         self.explore_handlers = None  # 稍后注入，用于复用地图渲染
 
@@ -178,18 +188,19 @@ class BattleHandlers:
 
 
 
-    def get_active_battle(self, umo: str):
-        """获取活跃战斗"""
-        return self._active_battles.get(umo)
+    def get_active_battle(self, umo: str, user_id: str):
+        """获取活跃战斗（用户级别隔离）"""
+        return self._active_battles.get(f"{umo}:{user_id}")
 
-    def set_active_battle(self, umo: str, battle):
-        """设置活跃战斗"""
-        self._active_battles[umo] = battle
+    def set_active_battle(self, umo: str, battle, user_id: str):
+        """设置活跃战斗（用户级别隔离）"""
+        self._active_battles[f"{umo}:{user_id}"] = battle
 
-    def clear_active_battle(self, umo: str):
-        """清除活跃战斗"""
-        if umo in self._active_battles:
-            del self._active_battles[umo]
+    def clear_active_battle(self, umo: str, user_id: str):
+        """清除活跃战斗（用户级别隔离）"""
+        key = f"{umo}:{user_id}"
+        if key in self._active_battles:
+            del self._active_battles[key]
 
     async def cmd_battle(self, event: AstrMessageEvent):
         """
@@ -207,8 +218,8 @@ class BattleHandlers:
             return
 
         # 检查是否已在战斗
-        if umo in self._active_battles:
-            battle = self._active_battles[umo]
+        battle = self.get_active_battle(umo, user_id)
+        if battle:
             battle_text = self.battle_system.get_battle_status_text(battle)
             skill_menu = self.battle_system.get_skill_menu_text(battle)
             yield event.plain_result(
@@ -274,7 +285,7 @@ class BattleHandlers:
             wild_monster=wild_monster.to_dict()
         )
 
-        self._active_battles[umo] = battle
+        self.set_active_battle(umo, battle, user_id)
 
         # 显示战斗界面
         wild_name = wild_monster.get_display_name()
@@ -327,7 +338,7 @@ class BattleHandlers:
         if not battle:
             return  # 改为 return，无需返回值
 
-        self._active_battles[umo] = battle
+        self.set_active_battle(umo, battle, user_id)
 
         # 显示战斗界面
         battle_text = self.battle_system.get_battle_status_text(battle)
@@ -357,7 +368,7 @@ class BattleHandlers:
         async def battle_loop(controller: SessionController, ev: AstrMessageEvent):
             msg = ev.message_str.strip()
 
-            battle = self._active_battles.get(umo)
+            battle = self._active_battles.get(f"{umo}:{user_id}")
             if not battle or not battle.is_active:
                 await ev.send(ev.plain_result("❌ 战斗已结束"))
                 controller.stop()
@@ -366,7 +377,7 @@ class BattleHandlers:
             player_monster = battle.player_monster
             if not player_monster:
                 await ev.send(ev.plain_result("❌ 战斗数据异常"))
-                self.clear_active_battle(umo)
+                self.clear_active_battle(umo, user_id)
                 controller.stop()
                 return
 
@@ -499,9 +510,9 @@ class BattleHandlers:
             controller.keep(timeout=self.plugin.battle_timeout, reset_timeout=True)
 
         try:
-            await battle_loop(event)
+            await battle_loop(event, session_filter=UserSessionFilter(user_id))
         except TimeoutError:
-            self.clear_active_battle(umo)
+            self.clear_active_battle(umo, user_id)
             yield event.plain_result("⏰ 战斗超时，已自动退出")
         finally:
             event.stop_event()
@@ -510,7 +521,7 @@ class BattleHandlers:
         """处理战斗结束"""
         MonsterInstance, BattleState, BattleAction, ActionType, BattleType = self._get_imports()
 
-        self.clear_active_battle(umo)
+        self.clear_active_battle(umo, user_id)
 
         if turn_result.winner == "player":
             # 胜利
@@ -635,7 +646,7 @@ class BattleHandlers:
             yield event.plain_result("❌ 创建战斗失败")
             return
         
-        self._active_battles[umo] = battle
+        self.set_active_battle(umo, battle, user_id)
         
         # 显示战斗界面
         battle_text = self.battle_system.get_battle_status_text(battle)
@@ -678,7 +689,7 @@ class BattleHandlers:
         umo = event.unified_msg_origin
         
         # 获取活跃战斗
-        battle = self._active_battles.get(umo)
+        battle = self._active_battles.get(f"{umo}:{user_id}")
         if not battle or not battle.is_active:
             # 战斗不存在，清除状态
             self.plugin.db.clear_game_state(user_id)
@@ -687,7 +698,7 @@ class BattleHandlers:
         
         player_monster = battle.player_monster
         if not player_monster:
-            self.clear_active_battle(umo)
+            self.clear_active_battle(umo, user_id)
             self.plugin.db.clear_game_state(user_id)
             yield event.plain_result("❌ 战斗数据异常")
             return
@@ -883,7 +894,7 @@ class BattleHandlers:
         """处理战斗结束（带状态管理）"""
         MonsterInstance, BattleState, BattleAction, ActionType, BattleType = self._get_imports()
         
-        self.clear_active_battle(umo)
+        self.clear_active_battle(umo, user_id)
         prefix = self.plugin.game_action_prefix
         from_explore = state_data.get("from_explore", False)
         
