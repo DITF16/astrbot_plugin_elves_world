@@ -109,12 +109,13 @@ class PlayerHandlers:
             ))
             controller.stop()
 
-            try:
-                await choose_starter(event)
-            except TimeoutError:
-                yield event.plain_result("⏰ 选择超时啦，请重新发送 /精灵 注册")
-            finally:
-                event.stop_event()
+        try:
+            await choose_starter(event)
+        except TimeoutError:
+            yield event.plain_result("⏰ 选择超时啦，请重新发送 /精灵 注册")
+        finally:
+            event.stop_event()
+
 
     async def cmd_info(self, event: AstrMessageEvent):
         """
