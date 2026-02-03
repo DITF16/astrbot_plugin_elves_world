@@ -1,8 +1,9 @@
 """
-玩家管理器
+玩家管理器（异步版本）
 - 封装数据库操作
 - 提供业务逻辑层
 - 管理玩家状态
+- 所有涉及IO的方法均为异步，避免阻塞事件循环
 """
 
 from typing import Dict, List, Optional, TYPE_CHECKING
@@ -16,13 +17,15 @@ if TYPE_CHECKING:
 
 class PlayerManager:
     """
-    玩家管理器
+    玩家管理器（异步版本）
 
     负责：
     - 玩家注册/查询
     - 精灵管理（添加/移除/队伍）
     - 货币/道具管理
     - 体力系统
+    
+    注意：所有涉及数据库IO的方法都是 async def，调用时需要 await
     """
 
     # 体力恢复配置
@@ -43,15 +46,15 @@ class PlayerManager:
 
     # ==================== 玩家基础操作 ====================
 
-    def player_exists(self, user_id: str) -> bool:
+    async def player_exists(self, user_id: str) -> bool:
         """检查玩家是否存在"""
-        return self.db.player_exists(user_id)
+        return await self.db.async_player_exists(user_id)
 
-    def create_player(self, user_id: str, name: str) -> Dict:
+    async def create_player(self, user_id: str, name: str) -> Dict:
         """创建新玩家"""
-        return self.db.create_player(user_id, name)
+        return await self.db.async_create_player(user_id, name)
 
-    def get_player(self, user_id: str, auto_recover_stamina: bool = True) -> Optional[Dict]:
+    async def get_player(self, user_id: str, auto_recover_stamina: bool = True) -> Optional[Dict]:
         """
         获取玩家数据
 
@@ -62,21 +65,21 @@ class PlayerManager:
         Returns:
             玩家数据字典，不存在返回None
         """
-        player = self.db.get_player(user_id)
+        player = await self.db.async_get_player(user_id)
 
         if player and auto_recover_stamina:
             recovered = self._calculate_stamina_recovery(player)
             if recovered > 0:
-                new_stamina = self.db.restore_stamina(user_id, recovered)
+                new_stamina = await self.db.async_restore_stamina(user_id, recovered)
                 player["stamina"] = new_stamina
-                self.db.update_player(user_id, {
+                await self.db.async_update_player(user_id, {
                     "last_stamina_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 })
 
         return player
 
     def _calculate_stamina_recovery(self, player: Dict) -> int:
-        """计算应恢复的体力"""
+        """计算应恢复的体力（纯计算，无IO，保持同步）"""
         last_update_str = player.get("last_stamina_update")
         if not last_update_str:
             return 0
@@ -96,18 +99,19 @@ class PlayerManager:
 
         return min(recovery, max_recovery)
 
-    def update_player(self, user_id: str, updates: Dict) -> bool:
+    async def update_player(self, user_id: str, updates: Dict) -> bool:
         """更新玩家数据"""
-        return self.db.update_player(user_id, updates)
 
-    def get_player_info_text(self, user_id: str) -> str:
+        return await self.db.async_update_player(user_id, updates)
+
+    async def get_player_info_text(self, user_id: str) -> str:
         """获取玩家信息文本（用于显示）"""
-        player = self.get_player(user_id)
+        player = await self.get_player(user_id)
         if not player:
             return "❌ 玩家不存在"
 
-        monster_count = self.db.get_player_monster_count(user_id)
-        team = self.get_team(user_id)
+        monster_count = await self.db.async_get_player_monster_count(user_id)
+        team = await self.get_team(user_id)
 
         win_rate = 0
         total_battles = player["wins"] + player["losses"]
@@ -130,66 +134,66 @@ class PlayerManager:
 
     # ==================== 货币操作 ====================
 
-    def add_currency(self, user_id: str, coins: int = 0, diamonds: int = 0) -> bool:
+    async def add_currency(self, user_id: str, coins: int = 0, diamonds: int = 0) -> bool:
         """增加货币"""
-        return self.db.add_player_currency(user_id, coins, diamonds)
+        return await self.db.async_add_player_currency(user_id, coins, diamonds)
 
-    def spend_coins(self, user_id: str, amount: int) -> bool:
+    async def spend_coins(self, user_id: str, amount: int) -> bool:
         """
         消费金币
 
         Returns:
             是否成功（金币不足返回False）
         """
-        player = self.db.get_player(user_id)
+        player = await self.db.async_get_player(user_id)
         if not player or player["coins"] < amount:
             return False
-        return self.db.add_player_currency(user_id, coins=-amount)
+        return await self.db.async_add_player_currency(user_id, coins=-amount)
 
-    def spend_diamonds(self, user_id: str, amount: int) -> bool:
+    async def spend_diamonds(self, user_id: str, amount: int) -> bool:
         """消费钻石"""
-        player = self.db.get_player(user_id)
+        player = await self.db.async_get_player(user_id)
         if not player or player["diamonds"] < amount:
             return False
-        return self.db.add_player_currency(user_id, diamonds=-amount)
+        return await self.db.async_add_player_currency(user_id, diamonds=-amount)
 
     # ==================== 体力操作 ====================
 
-    def consume_stamina(self, user_id: str, amount: int) -> bool:
+    async def consume_stamina(self, user_id: str, amount: int) -> bool:
         """消耗体力"""
-        return self.db.consume_stamina(user_id, amount)
+        return await self.db.async_consume_stamina(user_id, amount)
 
-    def restore_stamina(self, user_id: str, amount: int) -> int:
+    async def restore_stamina(self, user_id: str, amount: int) -> int:
         """恢复体力，返回恢复后的值"""
-        return self.db.restore_stamina(user_id, amount)
+        return await self.db.async_restore_stamina(user_id, amount)
 
-    def get_stamina(self, user_id: str) -> tuple:
+    async def get_stamina(self, user_id: str) -> tuple:
         """获取体力 (当前, 最大)"""
-        player = self.get_player(user_id)
+        player = await self.get_player(user_id)
         if not player:
             return (0, 0)
         return (player["stamina"], player["max_stamina"])
 
     # ==================== 经验/等级 ====================
 
-    def add_exp(self, user_id: str, exp: int) -> Dict:
+    async def add_exp(self, user_id: str, exp: int) -> Dict:
         """
         增加玩家经验
 
         Returns:
             {"leveled_up": bool, "new_level": int}
         """
-        return self.db.add_player_exp(user_id, exp)
+        return await self.db.async_add_player_exp(user_id, exp)
 
     # ==================== 战斗记录 ====================
 
-    def record_battle(self, user_id: str, is_win: bool):
+    async def record_battle(self, user_id: str, is_win: bool):
         """记录战斗结果"""
-        self.db.record_battle_result(user_id, is_win)
+        await self.db.async_record_battle_result(user_id, is_win)
 
     # ==================== 精灵管理 ====================
 
-    def add_monster(self, user_id: str, monster: "MonsterInstance") -> bool:
+    async def add_monster(self, user_id: str, monster: "MonsterInstance") -> bool:
         """
         添加精灵到玩家背包
 
@@ -200,66 +204,67 @@ class PlayerManager:
         Returns:
             是否成功（背包已满返回False）
         """
-        current_count = self.db.get_player_monster_count(user_id)
+        current_count = await self.db.async_get_player_monster_count(user_id)
         if current_count >= self.MAX_MONSTER_CAPACITY:
             return False
 
         monster_data = monster.to_dict()
-        return self.db.add_monster(user_id, monster_data)
+        return await self.db.async_add_monster(user_id, monster_data)
 
-    def add_monster_from_dict(self, user_id: str, monster_data: Dict) -> bool:
+    async def add_monster_from_dict(self, user_id: str, monster_data: Dict) -> bool:
         """从字典添加精灵"""
-        current_count = self.db.get_player_monster_count(user_id)
+        current_count = await self.db.async_get_player_monster_count(user_id)
         if current_count >= self.MAX_MONSTER_CAPACITY:
             return False
-        return self.db.add_monster(user_id, monster_data)
+        return await self.db.async_add_monster(user_id, monster_data)
 
-    def get_monsters(self, user_id: str) -> List[Dict]:
+
+    async def get_monsters(self, user_id: str) -> List[Dict]:
         """获取玩家所有精灵"""
-        return self.db.get_player_monsters(user_id)
+        return await self.db.async_get_player_monsters(user_id)
 
-    def get_monster(self, instance_id: str) -> Optional[Dict]:
+    async def get_monster(self, instance_id: str) -> Optional[Dict]:
         """获取单个精灵"""
-        return self.db.get_monster(instance_id)
+        return await self.db.async_get_monster(instance_id)
 
-    def update_monster(self, monster: "MonsterInstance") -> bool:
+    async def update_monster(self, monster: "MonsterInstance") -> bool:
         """更新精灵数据"""
-        return self.db.update_monster(monster.instance_id, monster.to_dict())
+        return await self.db.async_update_monster(monster.instance_id, monster.to_dict())
 
-    def update_monster_from_dict(self, instance_id: str, monster_data: Dict) -> bool:
+    async def update_monster_from_dict(self, instance_id: str, monster_data: Dict) -> bool:
         """从字典更新精灵"""
-        return self.db.update_monster(instance_id, monster_data)
+        return await self.db.async_update_monster(instance_id, monster_data)
 
-    def release_monster(self, user_id: str, instance_id: str) -> bool:
+    async def release_monster(self, user_id: str, instance_id: str) -> bool:
         """
         放生精灵
 
         Returns:
             是否成功
         """
-        monster = self.db.get_monster(instance_id)
+        monster = await self.db.async_get_monster(instance_id)
         if not monster:
             return False
 
         # 不能放生队伍中的精灵（需要先移出队伍）
-        monsters = self.db.get_player_monsters(user_id)
+        monsters = await self.db.async_get_player_monsters(user_id)
         for m in monsters:
             if m.get("instance_id") == instance_id and m.get("_is_in_team"):
                 return False
 
-        return self.db.delete_monster(instance_id)
+        return await self.db.async_delete_monster(instance_id)
 
-    def get_monster_count(self, user_id: str) -> int:
+    async def get_monster_count(self, user_id: str) -> int:
         """获取精灵数量"""
-        return self.db.get_player_monster_count(user_id)
+        return await self.db.async_get_player_monster_count(user_id)
 
     # ==================== 队伍管理 ====================
 
-    def get_team(self, user_id: str) -> List[Dict]:
+    async def get_team(self, user_id: str) -> List[Dict]:
         """获取玩家队伍"""
-        return self.db.get_player_team(user_id)
+        return await self.db.async_get_player_team(user_id)
 
-    def set_team(self, user_id: str, monster_ids: List[str]) -> bool:
+    async def set_team(self, user_id: str, monster_ids: List[str]) -> bool:
         """
         设置队伍
 
@@ -277,18 +282,18 @@ class PlayerManager:
             return False
 
         # 验证精灵是否属于该玩家
-        player_monsters = self.get_monsters(user_id)
+        player_monsters = await self.get_monsters(user_id)
         player_monster_ids = {m["instance_id"] for m in player_monsters}
 
         for mid in monster_ids:
             if mid not in player_monster_ids:
                 return False
 
-        return self.db.set_team(user_id, monster_ids)
+        return await self.db.async_set_team(user_id, monster_ids)
 
-    def add_to_team(self, user_id: str, instance_id: str) -> bool:
+    async def add_to_team(self, user_id: str, instance_id: str) -> bool:
         """添加精灵到队伍末尾"""
-        team = self.get_team(user_id)
+        team = await self.get_team(user_id)
         if len(team) >= self.MAX_TEAM_SIZE:
             return False
 
@@ -297,48 +302,48 @@ class PlayerManager:
             return False
 
         team_ids.append(instance_id)
-        return self.set_team(user_id, team_ids)
+        return await self.set_team(user_id, team_ids)
 
-    def remove_from_team(self, user_id: str, instance_id: str) -> bool:
+    async def remove_from_team(self, user_id: str, instance_id: str) -> bool:
         """从队伍移除精灵"""
-        team = self.get_team(user_id)
+        team = await self.get_team(user_id)
         team_ids = [m["instance_id"] for m in team if m["instance_id"] != instance_id]
 
         if len(team_ids) == 0:
             return False
 
-        return self.set_team(user_id, team_ids)
+        return await self.set_team(user_id, team_ids)
 
-    def swap_team_position(self, user_id: str, pos1: int, pos2: int) -> bool:
+    async def swap_team_position(self, user_id: str, pos1: int, pos2: int) -> bool:
         """交换队伍位置"""
-        team = self.get_team(user_id)
+        team = await self.get_team(user_id)
         if pos1 < 0 or pos1 >= len(team) or pos2 < 0 or pos2 >= len(team):
             return False
 
         team_ids = [m["instance_id"] for m in team]
         team_ids[pos1], team_ids[pos2] = team_ids[pos2], team_ids[pos1]
-        return self.set_team(user_id, team_ids)
+        return await self.set_team(user_id, team_ids)
 
-    def get_first_available_monster(self, user_id: str) -> Optional[Dict]:
+    async def get_first_available_monster(self, user_id: str) -> Optional[Dict]:
         """获取队伍中第一个未倒下的精灵"""
-        team = self.get_team(user_id)
+        team = await self.get_team(user_id)
         for monster in team:
             if monster.get("current_hp", 0) > 0:
                 return monster
         return None
 
-    def has_available_monster(self, user_id: str) -> bool:
+    async def has_available_monster(self, user_id: str) -> bool:
         """检查是否有可战斗的精灵"""
-        return self.get_first_available_monster(user_id) is not None
+        return await self.get_first_available_monster(user_id) is not None
 
-    def heal_all_monsters(self, user_id: str) -> int:
+    async def heal_all_monsters(self, user_id: str) -> int:
         """
         治疗所有精灵
 
         Returns:
             治疗的精灵数量
         """
-        monsters = self.get_monsters(user_id)
+        monsters = await self.get_monsters(user_id)
         healed_count = 0
 
         for monster_data in monsters:
@@ -346,14 +351,14 @@ class PlayerManager:
                 monster_data["current_hp"] = monster_data["max_hp"]
                 monster_data["status"] = None
                 monster_data["status_turns"] = 0
-                self.db.update_monster(monster_data["instance_id"], monster_data)
+                await self.db.async_update_monster(monster_data["instance_id"], monster_data)
                 healed_count += 1
 
         return healed_count
 
-    def heal_team(self, user_id: str) -> int:
+    async def heal_team(self, user_id: str) -> int:
         """治疗队伍精灵"""
-        team = self.get_team(user_id)
+        team = await self.get_team(user_id)
         healed_count = 0
 
         for monster_data in team:
@@ -361,41 +366,41 @@ class PlayerManager:
                 monster_data["current_hp"] = monster_data["max_hp"]
                 monster_data["status"] = None
                 monster_data["status_turns"] = 0
-                self.db.update_monster(monster_data["instance_id"], monster_data)
+                await self.db.async_update_monster(monster_data["instance_id"], monster_data)
                 healed_count += 1
 
         return healed_count
 
     # ==================== 道具管理 ====================
 
-    def get_inventory(self, user_id: str) -> Dict[str, int]:
+    async def get_inventory(self, user_id: str) -> Dict[str, int]:
         """获取背包道具"""
-        return self.db.get_inventory(user_id)
+        return await self.db.async_get_inventory(user_id)
 
-    def add_item(self, user_id: str, item_id: str, amount: int = 1) -> int:
+    async def add_item(self, user_id: str, item_id: str, amount: int = 1) -> int:
         """添加道具，返回当前数量"""
-        return self.db.add_item(user_id, item_id, amount)
+        return await self.db.async_add_item(user_id, item_id, amount)
 
-    def use_item(self, user_id: str, item_id: str, amount: int = 1) -> bool:
+    async def use_item(self, user_id: str, item_id: str, amount: int = 1) -> bool:
         """使用道具"""
-        return self.db.consume_item(user_id, item_id, amount)
+        return await self.db.async_consume_item(user_id, item_id, amount)
 
-    def has_item(self, user_id: str, item_id: str, amount: int = 1) -> bool:
+    async def has_item(self, user_id: str, item_id: str, amount: int = 1) -> bool:
         """检查是否拥有足够道具"""
-        return self.db.get_item_count(user_id, item_id) >= amount
+        return await self.db.async_get_item_count(user_id, item_id) >= amount
 
     # ==================== 区域管理 ====================
 
-    def get_current_region(self, user_id: str) -> str:
+    async def get_current_region(self, user_id: str) -> str:
         """获取当前区域"""
-        player = self.db.get_player(user_id)
+        player = await self.db.async_get_player(user_id)
         return player["current_region"] if player else "starter_forest"
 
-    def set_current_region(self, user_id: str, region_id: str) -> bool:
+    async def set_current_region(self, user_id: str, region_id: str) -> bool:
         """设置当前区域"""
-        return self.db.update_player(user_id, {"current_region": region_id})
+        return await self.db.async_update_player(user_id, {"current_region": region_id})
 
-    def can_enter_region(self, user_id: str, region_id: str) -> tuple:
+    async def can_enter_region(self, user_id: str, region_id: str) -> tuple:
         """
         检查是否可以进入区域
 
@@ -409,7 +414,7 @@ class PlayerManager:
         if not region:
             return (False, "区域不存在")
 
-        player = self.get_player(user_id)
+        player = await self.get_player(user_id)
         if not player:
             return (False, "玩家不存在")
 
@@ -424,7 +429,7 @@ class PlayerManager:
             if player["level"] < condition_value:
                 return (False, f"需要等级 {condition_value}")
         elif condition_type == "boss_clear":
-            if not self.db.is_boss_first_cleared(user_id, condition_value):
+            if not await self.db.async_is_boss_first_cleared(user_id, condition_value):
                 boss_config = self.config.get_item("bosses", condition_value)
                 boss_name = boss_config.get("name", condition_value) if boss_config else condition_value
                 return (False, f"需要先击败 {boss_name}")
@@ -433,21 +438,22 @@ class PlayerManager:
 
     # ==================== BOSS记录 ====================
 
-    def record_boss_clear(self, user_id: str, boss_id: str, time_seconds: int = None) -> Dict:
+    async def record_boss_clear(self, user_id: str, boss_id: str, time_seconds: int = None) -> Dict:
         """记录BOSS通关"""
-        return self.db.record_boss_clear(user_id, boss_id, time_seconds)
+        return await self.db.async_record_boss_clear(user_id, boss_id, time_seconds)
 
-    def is_boss_first_cleared(self, user_id: str, boss_id: str) -> bool:
+    async def is_boss_first_cleared(self, user_id: str, boss_id: str) -> bool:
         """检查是否已首通BOSS"""
-        return self.db.is_boss_first_cleared(user_id, boss_id)
+        return await self.db.async_is_boss_first_cleared(user_id, boss_id)
 
     # ==================== 排行榜 ====================
 
-    def get_leaderboard(self, order_by: str = "wins", limit: int = 10) -> List[Dict]:
+    async def get_leaderboard(self, order_by: str = "wins", limit: int = 10) -> List[Dict]:
         """获取排行榜"""
-        return self.db.get_leaderboard(order_by, limit)
+        return await self.db.async_get_leaderboard(order_by, limit)
 
-    def get_leaderboard_text(self, order_by: str = "wins", limit: int = 10) -> str:
+
+    async def get_leaderboard_text(self, order_by: str = "wins", limit: int = 10) -> str:
         """获取排行榜文本"""
         title_map = {
             "wins": "🏆 胜场排行榜",
@@ -456,7 +462,7 @@ class PlayerManager:
         }
 
         title = title_map.get(order_by, "排行榜")
-        players = self.get_leaderboard(order_by, limit)
+        players = await self.get_leaderboard(order_by, limit)
 
         if not players:
             return f"{title}\n暂无数据"
@@ -471,17 +477,16 @@ class PlayerManager:
 
         return text
 
-
     # ==================== BUFF 管理 ====================
 
-    def get_active_buffs(self, user_id: str) -> Dict:
+    async def get_active_buffs(self, user_id: str) -> Dict:
         """
         获取玩家当前激活的 buff 列表
         
         Returns:
             格式: {buff_type: {"value": float, "expires_at": str, "source": str}}
         """
-        player = self.db.get_player(user_id)
+        player = await self.db.async_get_player(user_id)
         if not player:
             return {}
         
@@ -508,11 +513,11 @@ class PlayerManager:
         
         # 如果有过期的 buff，更新数据库
         if len(valid_buffs) != len(buffs):
-            self._save_buffs(user_id, valid_buffs)
+            await self._save_buffs(user_id, valid_buffs)
         
         return valid_buffs
 
-    def add_buff(self, user_id: str, buff_type: str, buff_value: float, 
+    async def add_buff(self, user_id: str, buff_type: str, buff_value: float, 
                  duration_minutes: int, source: str = "item") -> bool:
         """
         给玩家添加一个 buff
@@ -527,7 +532,7 @@ class PlayerManager:
         Returns:
             是否成功
         """
-        buffs = self.get_active_buffs(user_id)
+        buffs = await self.get_active_buffs(user_id)
         
         expires_at = datetime.now()
         from datetime import timedelta
@@ -539,38 +544,38 @@ class PlayerManager:
             "source": source
         }
         
-        return self._save_buffs(user_id, buffs)
+        return await self._save_buffs(user_id, buffs)
 
-    def remove_buff(self, user_id: str, buff_type: str) -> bool:
+    async def remove_buff(self, user_id: str, buff_type: str) -> bool:
         """移除指定的 buff"""
-        buffs = self.get_active_buffs(user_id)
+        buffs = await self.get_active_buffs(user_id)
         if buff_type in buffs:
             del buffs[buff_type]
-            return self._save_buffs(user_id, buffs)
+            return await self._save_buffs(user_id, buffs)
         return False
 
-    def get_buff_multiplier(self, user_id: str, buff_type: str) -> float:
+    async def get_buff_multiplier(self, user_id: str, buff_type: str) -> float:
         """
         获取指定类型 buff 的倍率
         
         Returns:
             倍率值，无 buff 时返回 1.0
         """
-        buffs = self.get_active_buffs(user_id)
+        buffs = await self.get_active_buffs(user_id)
         if buff_type in buffs:
             return buffs[buff_type].get("value", 1.0)
         return 1.0
 
-    def _save_buffs(self, user_id: str, buffs: Dict) -> bool:
+    async def _save_buffs(self, user_id: str, buffs: Dict) -> bool:
         """保存 buff 数据到数据库"""
         import json
-        return self.db.update_player(user_id, {
+        return await self.db.async_update_player(user_id, {
             "active_buffs": json.dumps(buffs, ensure_ascii=False)
         })
 
-    def get_buffs_text(self, user_id: str) -> str:
+    async def get_buffs_text(self, user_id: str) -> str:
         """获取玩家当前 buff 的文本描述"""
-        buffs = self.get_active_buffs(user_id)
+        buffs = await self.get_active_buffs(user_id)
         if not buffs:
             return "当前没有激活的增益效果"
         
@@ -607,4 +612,5 @@ class PlayerManager:
             lines.append(f"  {name} +{percent}% (剩余 {time_str})")
         
         return "\n".join(lines)
+
 
