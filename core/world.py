@@ -1190,7 +1190,7 @@ class MapImageRenderer:
         'cell_unknown': (50, 50, 60),      # 未知
         'cell_player': (100, 200, 100),    # 玩家位置
         'cell_monster': (200, 150, 100),   # 精灵
-        'cell_rare': (255, 215, 0),        # 稀有精灵
+        'cell_rare': (128, 0, 128),        # 稀有精灵（深紫色，让金色星星更醒目）
         'cell_treasure': (100, 180, 255),  # 宝箱
         'cell_boss': (220, 80, 80),        # Boss
         'cell_exit': (150, 220, 150),      # 出口
