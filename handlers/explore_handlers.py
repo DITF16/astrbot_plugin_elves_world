@@ -4,11 +4,13 @@
 """
 
 from astrbot.api.event import filter, AstrMessageEvent
+from astrbot.api.message_components import Image
 from astrbot.api import logger
 # 不再需要 session_waiter，改用数据库状态 + 前缀触发
 # from astrbot.core.utils.session_waiter import session_waiter, SessionController
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+
 
 if TYPE_CHECKING:
     from ..main import MonsterGamePlugin
@@ -31,6 +33,72 @@ class ExploreHandlers:
     def _get_imports(self):
         from ..core import CellType, EventType
         return CellType, EventType
+
+    async def _render_map_image(self, exp_map, region_name: str = "") -> Optional[bytes]:
+        """
+        渲染地图为图片
+        
+        Args:
+            exp_map: 探索地图对象
+            region_name: 区域名称
+            
+        Returns:
+            图片字节数据，失败返回 None
+        """
+        try:
+            from ..core.world import get_map_renderer
+            
+            # 获取天气信息
+            weather_info = None
+            if hasattr(exp_map, 'weather') and exp_map.weather:
+                weather_data = self.wm.get_weather_info(exp_map.weather)
+                if weather_data:
+                    weather_info = {
+                        "icon": weather_data.get("icon", ""),
+                        "name": weather_data.get("name", "")
+                    }
+            
+            # 异步渲染地图图片
+            renderer = get_map_renderer()
+            image_bytes = await renderer.render_map_async(
+                exp_map, 
+                region_name=region_name,
+                weather_info=weather_info
+            )
+            return image_bytes
+            
+        except Exception as e:
+            logger.warning(f"地图图片渲染失败: {e}")
+            return None
+
+    async def _send_map_image(self, event: AstrMessageEvent, exp_map, 
+                               region_name: str = "", extra_text: str = ""):
+        """
+        发送地图图片（异步生成器）
+        
+        Args:
+            event: 消息事件
+            exp_map: 探索地图对象
+            region_name: 区域名称
+            extra_text: 额外的文字信息（会在图片前发送）
+        """
+        # 先发送额外文字
+        if extra_text:
+            yield event.plain_result(extra_text)
+        
+        # 尝试渲染图片
+        image_bytes = await self._render_map_image(exp_map, region_name=region_name)
+        
+        if image_bytes:
+            # 成功渲染，发送图片
+            yield event.chain_result([Image.fromBytes(image_bytes)])
+        else:
+            # 渲染失败，回退到文字地图
+            map_text = self.wm.render_map(exp_map)
+            yield event.plain_result(map_text)
+
+
+
 
     async def cmd_regions(self, event: AstrMessageEvent):
         """
@@ -102,15 +170,13 @@ class ExploreHandlers:
         prefix = self.plugin.game_action_prefix
 
         if active_map and not region_name:
-            # 显示当前地图
-            map_text = self.wm.render_map(active_map)
-            yield event.plain_result(
-                f"{map_text}\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"💡 发送 \"{prefix}坐标\" 移动（如 \"{prefix}B2\"）\n"
-                f"💡 发送 \"{prefix}离开\" 退出探索"
-            )
+            # 显示当前地图（图片）
+            region_info = self.wm.get_region(active_map.region_id)
+            region_display = region_info.get("name", "") if region_info else ""
+            async for msg in self._send_map_image(event, active_map, region_name=region_display):
+                yield msg
             return
+
 
         if not region_name:
             # 显示区域列表
@@ -180,17 +246,13 @@ class ExploreHandlers:
             player_level=player["level"]
         )
 
-        # 显示地图
+        # 显示地图（图片）
         region_display_name = region.get("name", region_id)
-        map_text = self.wm.render_map(exp_map)
+        yield event.plain_result(f"🗺️ 进入了【{region_display_name}】！")
+        async for msg in self._send_map_image(event, exp_map, region_name=region_display_name):
+            yield msg
 
-        yield event.plain_result(
-            f"🗺️ 进入了【{region_display_name}】！\n\n"
-            f"{map_text}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"💡 发送 \"{prefix}坐标\" 移动（如 \"{prefix}B2\"）\n"
-            f"💡 发送 \"{prefix}离开\" 退出探索"
-        )
+
 
         # 设置游戏状态为探索中（存储到数据库）
         self.plugin.db.set_game_state(user_id, "exploring", {
@@ -236,16 +298,13 @@ class ExploreHandlers:
             yield event.plain_result(result["message"])
             return
         
-        # 显示地图
+        # 显示地图（图片）
         if action in ["地图", "map", "查看"]:
-            map_text = self.wm.render_map(exp_map)
-            yield event.plain_result(
-                f"{map_text}\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"💡 发送 \"{prefix}坐标\" 移动（如 \"{prefix}B2\"）\n"
-                f"💡 发送 \"{prefix}离开\" 退出探索"
-            )
+            region_name = state_data.get("region_name", "")
+            async for msg in self._send_map_image(event, exp_map, region_name=region_name):
+                yield msg
             return
+
         
         # 解析坐标
         coord = self.wm.parse_coordinate(action, exp_map)
@@ -321,16 +380,15 @@ class ExploreHandlers:
                     m_data["current_hp"] = max(1, m_data["current_hp"] - damage)
                     self.pm.update_monster_from_dict(m_data["instance_id"], m_data)
         
-        # 显示更新后的地图
+        # 显示更新后的地图（图片）
         exp_map = self.wm.get_active_map(user_id)
         if exp_map:
-            map_text = self.wm.render_map(exp_map)
-            yield event.plain_result(
-                f"{result.message}\n\n"
-                f"{map_text}\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"💡 发送 \"{prefix}坐标\" 继续移动"
-            )
+            region_name = state_data.get("region_name", "")
+            yield event.plain_result(result.message)
+            async for msg in self._send_map_image(event, exp_map, region_name=region_name):
+                yield msg
+
+
 
     async def cmd_map(self, event: AstrMessageEvent):
         """
@@ -347,8 +405,10 @@ class ExploreHandlers:
             )
             return
 
-        map_text = self.wm.render_map(exp_map)
-        yield event.plain_result(map_text)
+        # 使用图片渲染地图
+        async for result in self._send_map_image(event, exp_map):
+            yield result
+
 
     async def cmd_leave(self, event: AstrMessageEvent):
         """

@@ -1158,28 +1158,497 @@ class WorldManager:
 
         # 操作提示
         lines.append("─" * (exp_map.width * 3 + 4))
-        lines.append("输入坐标探索(如 B2)，或输入 '离开' 结束")
 
         return "\n".join(lines)
 
-    def render_mini_map(self, exp_map: ExplorationMap) -> str:
-        """渲染简化版小地图"""
-        lines = []
 
+
+
+# ==================== 地图图片渲染器 ====================
+
+class MapImageRenderer:
+    """
+    地图图片渲染器
+    
+    将探索地图渲染为图片，解决文字地图在不同客户端排版错乱的问题。
+    使用 Pillow 进行图片渲染，支持异步并发。
+    
+    特性：
+    - 异步渲染：使用 asyncio.to_thread() 避免阻塞事件循环
+    - 图片缓存：基于地图状态哈希的缓存机制
+    - 美观设计：使用配色方案和图标
+    """
+    
+    # 配色方案
+    COLORS = {
+        'background': (45, 45, 55),        # 深灰背景
+        'grid_line': (70, 70, 80),         # 网格线
+        'text': (220, 220, 220),           # 普通文字
+        'text_dim': (140, 140, 150),       # 暗淡文字
+        'header_bg': (35, 35, 45),         # 标题背景
+        'cell_empty': (60, 60, 70),        # 空地
+        'cell_unknown': (50, 50, 60),      # 未知
+        'cell_player': (100, 200, 100),    # 玩家位置
+        'cell_monster': (200, 150, 100),   # 精灵
+        'cell_rare': (255, 215, 0),        # 稀有精灵
+        'cell_treasure': (100, 180, 255),  # 宝箱
+        'cell_boss': (220, 80, 80),        # Boss
+        'cell_exit': (150, 220, 150),      # 出口
+        'cell_event': (180, 130, 200),     # 事件
+    }
+    
+    # 图标映射（使用 Emoji 符号，需要 NotoColorEmoji 字体支持）
+    ICONS = {
+        'player': '👣',      # 玩家位置
+        'monster': '🐾',     # 普通精灵
+        'rare': '⭐',        # 稀有精灵
+        'treasure': '🎁',    # 宝箱
+        'boss': '👹',        # Boss
+        'exit': '🚪',        # 出口
+        'event': '🏚️',       # 事件
+        'unknown': '❓',     # 未知
+        'empty': '·',        # 空地（保持ASCII，因为是小点）
+    }
+
+    
+    def __init__(self, 
+                 cell_size: int = 48,
+                 padding: int = 20,
+                 font_size: int = 16,
+                 cache_enabled: bool = True):
+        """
+        初始化渲染器
+        
+        Args:
+            cell_size: 每个格子的像素大小
+            padding: 图片边距
+            font_size: 普通文字字体大小
+            cache_enabled: 是否启用缓存
+        """
+        self.cell_size = cell_size
+        self.padding = padding
+        self.font_size = font_size
+        self.cache_enabled = cache_enabled
+        
+        # 内存缓存
+        self._cache: Dict[str, bytes] = {}
+        self._cache_max_size = 50
+        
+        # 字体（延迟加载）
+        self._font = None
+        self._emoji_font = None  # Emoji 专用字体
+    
+    def _get_font(self):
+        """获取普通字体，延迟加载"""
+        if self._font is None:
+            self._font = self._load_font(self.font_size)
+        return self._font
+    
+    def _get_emoji_font(self):
+        """获取 Emoji 字体，延迟加载"""
+        if self._emoji_font is None:
+            self._emoji_font = self._load_emoji_font(int(self.cell_size * 0.6))
+        return self._emoji_font
+    
+    def _load_font(self, size: int):
+        """加载字体，优先使用系统中支持中文的字体"""
+        from PIL import ImageFont
+        import os
+        
+        # 尝试加载的字体列表（按优先级）
+        font_candidates = [
+            # Windows
+            "C:/Windows/Fonts/msyh.ttc",      # 微软雅黑
+            "C:/Windows/Fonts/simhei.ttf",    # 黑体
+            "C:/Windows/Fonts/simsun.ttc",    # 宋体
+            # Linux
+            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            # macOS
+            "/System/Library/Fonts/PingFang.ttc",
+            "/System/Library/Fonts/STHeiti Light.ttc",
+        ]
+        
+        for font_path in font_candidates:
+            if os.path.exists(font_path):
+                try:
+                    return ImageFont.truetype(font_path, size)
+                except Exception:
+                    continue
+        
+        # 回退到默认字体
+        try:
+            return ImageFont.load_default()
+        except Exception:
+            return None
+    
+    def _load_emoji_font(self, size: int):
+        """加载 Emoji 字体（NotoColorEmoji）"""
+        from PIL import ImageFont
+        import os
+        
+        # 获取插件目录
+        plugin_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+        # Emoji 字体候选列表
+        emoji_font_candidates = [
+            # 插件自带字体（推荐）
+            os.path.join(plugin_dir, "assets", "fonts", "NotoColorEmoji.ttf"),
+            # Windows
+            "C:/Windows/Fonts/seguiemj.ttf",      # Segoe UI Emoji
+            # Linux
+            "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
+            "/usr/share/fonts/noto-emoji/NotoColorEmoji.ttf",
+            # macOS (Apple Color Emoji 不支持 PIL，跳过)
+        ]
+        
+        for font_path in emoji_font_candidates:
+            if os.path.exists(font_path):
+                try:
+                    return ImageFont.truetype(font_path, size)
+                except Exception:
+                    continue
+        
+        # 回退到普通字体（Emoji 可能显示为方块）
+        return self._get_font()
+    
+    def _get_map_hash(self, exp_map: 'ExplorationMap') -> str:
+        """计算地图状态的哈希值，用于缓存"""
+        import hashlib
+        
+        state_str = f"{exp_map.region_id}:{exp_map.width}:{exp_map.height}:"
+        state_str += f"{exp_map.player_x}:{exp_map.player_y}:{exp_map.weather}:"
+        state_str += f"{exp_map.explored_count}:"
+        
         for y in range(exp_map.height):
-            row_str = ""
             for x in range(exp_map.width):
                 cell = exp_map.get_cell(x, y)
-                is_player = (x == exp_map.player_x and y == exp_map.player_y)
-
-                if is_player:
-                    row_str += "👣"
-                elif cell and (cell.is_explored or cell.is_visible):
-                    row_str += cell.get_icon()
+                if cell:
+                    state_str += f"{cell.cell_type.value}{int(cell.is_explored)}{int(cell.is_visible)}"
                 else:
-                    row_str += "？"
+                    state_str += "X"
+        
+        return hashlib.md5(state_str.encode()).hexdigest()[:16]
+    
+    async def render_map_async(self, 
+                                exp_map: 'ExplorationMap',
+                                region_name: str = "",
+                                weather_info: Optional[Dict] = None,
+                                show_hidden: bool = False) -> bytes:
+        """
+        异步渲染地图为图片
+        
+        Args:
+            exp_map: 探索地图对象
+            region_name: 区域名称
+            weather_info: 天气信息 {"icon": "☀️", "name": "晴天"}
+            show_hidden: 是否显示隐藏格子（调试用）
+            
+        Returns:
+            PNG 图片的字节数据
+        """
+        import asyncio
+        
+        # 检查缓存
+        cache_key = None
+        if self.cache_enabled:
+            cache_key = self._get_map_hash(exp_map)
+            if cache_key in self._cache:
+                return self._cache[cache_key]
+        
+        # 在线程池中执行渲染（避免阻塞事件循环）
+        image_bytes = await asyncio.to_thread(
+            self._render_map_sync,
+            exp_map,
+            region_name,
+            weather_info,
+            show_hidden
+        )
+        
+        # 存入缓存
+        if self.cache_enabled and cache_key:
+            self._add_to_cache(cache_key, image_bytes)
+        
+        return image_bytes
+    
+    def _add_to_cache(self, key: str, data: bytes):
+        """添加到缓存，自动清理旧缓存"""
+        if len(self._cache) >= self._cache_max_size:
+            oldest_key = next(iter(self._cache))
+            del self._cache[oldest_key]
+        self._cache[key] = data
+    
+    def _render_map_sync(self,
+                          exp_map: 'ExplorationMap',
+                          region_name: str,
+                          weather_info: Optional[Dict],
+                          show_hidden: bool) -> bytes:
+        """同步渲染地图（在线程池中执行）"""
+        from PIL import Image, ImageDraw
+        import io
+        
+        # 计算图片尺寸
+        header_height = 60
+        legend_height = 80
+        status_height = 55
+        col_header_height = 25
+        row_label_width = 40
+        
+        map_width = exp_map.width * self.cell_size
+        map_height = exp_map.height * self.cell_size
+        
+        total_width = row_label_width + map_width + self.padding * 2
+        total_height = header_height + col_header_height + map_height + legend_height + status_height + self.padding * 2
+        
+        # 创建图片
+        img = Image.new('RGB', (total_width, total_height), self.COLORS['background'])
+        draw = ImageDraw.Draw(img)
+        font = self._get_font()
+        emoji_font = self._load_emoji_font(self.font_size)  # 加载 Emoji 字体
 
-            lines.append(row_str)
+        
+        y_offset = self.padding
+        
+        # 1. 绘制标题区域
+        y_offset = self._draw_header(draw, font, emoji_font, total_width, y_offset, 
+                                      region_name, weather_info, header_height)
 
-        return "\n".join(lines)
+        
+        # 2. 绘制列标题 (A, B, C, ...)
+        y_offset = self._draw_column_headers(draw, font, exp_map, y_offset, row_label_width)
+        
+        # 3. 绘制地图主体
+        y_offset = self._draw_map_grid(draw, font, emoji_font, exp_map, y_offset, 
+                                        row_label_width, show_hidden)
+        
+        # 4. 绘制图例
+        y_offset = self._draw_legend(draw, font, emoji_font, total_width, y_offset)
+        
+        # 5. 绘制状态信息
+        self._draw_status(draw, font, exp_map, total_width, y_offset)
+
+        
+        # 转换为字节
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG', optimize=True)
+        return buffer.getvalue()
+    
+    def _draw_header(self, draw, font, emoji_font, width: int, y: int, region_name: str,
+                      weather_info: Optional[Dict], height: int) -> int:
+        """绘制标题区域"""
+        # 背景
+        draw.rectangle(
+            [(self.padding, y), (width - self.padding, y + height)],
+            fill=self.COLORS['header_bg']
+        )
+        
+        # 区域名称
+        title = f"[{region_name}]" if region_name else "[探索中]"
+        if font:
+            draw.text((self.padding + 15, y + 12), title,
+                      fill=self.COLORS['text'], font=font)
+        
+        # 天气信息（天气图标使用 emoji_font）
+        if weather_info:
+            weather_icon = weather_info.get('icon', '')
+            weather_name = weather_info.get('name', '')
+            
+            # 先绘制天气图标（使用 emoji_font）
+            icon_x = self.padding + 15
+            if weather_icon and emoji_font:
+                draw.text((icon_x, y + 35), weather_icon,
+                          fill=self.COLORS['text_dim'], font=emoji_font)
+                icon_x += 25  # 图标后留出空间
+            
+            # 再绘制天气名称（使用普通字体）
+            if weather_name and font:
+                draw.text((icon_x, y + 35), weather_name,
+                          fill=self.COLORS['text_dim'], font=font)
+        
+        return y + height + 5
+
+    
+    def _draw_column_headers(self, draw, font, exp_map: 'ExplorationMap', 
+                              y: int, row_label_width: int) -> int:
+        """绘制列标题"""
+        x_start = self.padding + row_label_width
+        
+        for x in range(exp_map.width):
+            col_label = chr(ord('A') + x)
+            text_x = x_start + x * self.cell_size + self.cell_size // 2 - 5
+            if font:
+                draw.text((text_x, y), col_label, fill=self.COLORS['text_dim'], font=font)
+        
+        return y + 25
+    
+    def _draw_map_grid(self, draw, font, emoji_font, exp_map: 'ExplorationMap',
+                        y_start: int, row_label_width: int, show_hidden: bool) -> int:
+        """绘制地图网格"""
+        x_start = self.padding + row_label_width
+        
+        for y in range(exp_map.height):
+            # 绘制行号
+            row_label = str(y + 1)
+            if font:
+                draw.text((self.padding + 12, y_start + y * self.cell_size + self.cell_size // 2 - 8),
+                          row_label, fill=self.COLORS['text_dim'], font=font)
+            
+            for x in range(exp_map.width):
+                cell_x = x_start + x * self.cell_size
+                cell_y = y_start + y * self.cell_size
+                
+                cell = exp_map.get_cell(x, y)
+                is_player = (x == exp_map.player_x and y == exp_map.player_y)
+                
+                # 绘制格子（传入 emoji_font）
+                self._draw_cell(draw, font, emoji_font, cell_x, cell_y, cell, is_player, show_hidden)
+
+        
+        # 绘制网格线
+        for i in range(exp_map.width + 1):
+            line_x = x_start + i * self.cell_size
+            draw.line([(line_x, y_start), (line_x, y_start + exp_map.height * self.cell_size)],
+                      fill=self.COLORS['grid_line'], width=1)
+        
+        for i in range(exp_map.height + 1):
+            line_y = y_start + i * self.cell_size
+            draw.line([(x_start, line_y), (x_start + exp_map.width * self.cell_size, line_y)],
+                      fill=self.COLORS['grid_line'], width=1)
+        
+        return y_start + exp_map.height * self.cell_size + 10
+    
+    def _draw_cell(self, draw, font, emoji_font, x: int, y: int, cell: Optional['MapCell'],
+                    is_player: bool, show_hidden: bool):
+        """绘制单个格子"""
+        # 确定格子颜色和图标
+        if is_player:
+            bg_color = self.COLORS['cell_player']
+            icon = self.ICONS['player']
+        elif cell is None:
+            bg_color = self.COLORS['cell_empty']
+            icon = self.ICONS['empty']
+        elif not (show_hidden or cell.is_explored or cell.is_visible):
+            bg_color = self.COLORS['cell_unknown']
+            icon = self.ICONS['unknown']
+        else:
+            # 根据格子类型确定颜色和图标
+            type_mapping = {
+                CellType.EMPTY: ('cell_empty', 'empty'),
+                CellType.MONSTER: ('cell_monster', 'monster'),
+                CellType.RARE_MONSTER: ('cell_rare', 'rare'),
+                CellType.TREASURE: ('cell_treasure', 'treasure'),
+                CellType.BOSS: ('cell_boss', 'boss'),
+                CellType.EXIT: ('cell_exit', 'exit'),
+                CellType.EVENT: ('cell_event', 'event'),
+            }
+            color_key, icon_key = type_mapping.get(cell.cell_type, ('cell_empty', 'empty'))
+            bg_color = self.COLORS[color_key]
+            icon = self.ICONS[icon_key]
+        
+        # 绘制背景
+        margin = 2
+        draw.rectangle(
+            [(x + margin, y + margin), (x + self.cell_size - margin, y + self.cell_size - margin)],
+            fill=bg_color
+        )
+        
+        # 选择字体：Emoji 图标用 emoji_font，普通字符用 font
+        is_emoji = icon not in ('·', '.', ' ')  # 空地用普通字符
+        use_font = emoji_font if (is_emoji and emoji_font) else font
+        
+        # 绘制图标（居中）
+        if use_font:
+            try:
+                bbox = draw.textbbox((0, 0), icon, font=use_font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+            except Exception:
+                text_width = self.cell_size // 2
+                text_height = self.cell_size // 2
+            
+            text_x = x + (self.cell_size - text_width) // 2
+            text_y = y + (self.cell_size - text_height) // 2 - 2
+            
+            # Emoji 不需要设置颜色（彩色 Emoji 自带颜色）
+            if is_emoji and emoji_font:
+                draw.text((text_x, text_y), icon, font=use_font, embedded_color=True)
+            else:
+                icon_color = (30, 30, 30) if is_player else self.COLORS['text']
+                draw.text((text_x, text_y), icon, fill=icon_color, font=use_font)
+    
+    def _draw_legend(self, draw, font, emoji_font, width: int, y: int) -> int:
+        """绘制图例"""
+        # 使用 Emoji 符号和对应的颜色
+        legend_items = [
+            (self.ICONS['player'], '你', self.COLORS['cell_player']),
+            (self.ICONS['monster'], '精灵', self.COLORS['cell_monster']),
+            (self.ICONS['rare'], '稀有', self.COLORS['cell_rare']),
+            (self.ICONS['treasure'], '宝箱', self.COLORS['cell_treasure']),
+            (self.ICONS['boss'], 'BOSS', self.COLORS['cell_boss']),
+            (self.ICONS['exit'], '出口', self.COLORS['cell_exit']),
+            (self.ICONS['event'], '事件', self.COLORS['cell_event']),
+            (self.ICONS['unknown'], '未知', self.COLORS['cell_unknown']),
+        ]
+        
+        items_per_row = 4
+        item_width = (width - self.padding * 2) // items_per_row
+        
+        for i, (icon, label, color) in enumerate(legend_items):
+            row = i // items_per_row
+            col = i % items_per_row
+            
+            item_x = self.padding + col * item_width + 10
+            item_y = y + row * 30
+            
+            # 使用 emoji_font 绘制图标
+            use_font = emoji_font if emoji_font else font
+            if use_font:
+                # 绘制 Emoji 图标（彩色）
+                if emoji_font:
+                    draw.text((item_x, item_y), icon, font=emoji_font, embedded_color=True)
+                else:
+                    draw.text((item_x, item_y), icon, fill=color, font=font)
+            # 绘制标签（使用普通字体）
+            if font:
+                draw.text((item_x + 25, item_y), label, fill=self.COLORS['text_dim'], font=font)
+        return y + 70
+
+    
+    def _draw_status(self, draw, font, exp_map: 'ExplorationMap', width: int, y: int):
+        """绘制状态信息"""
+        total_cells = exp_map.get_total_cells()
+        explored_percent = exp_map.explored_count / total_cells * 100 if total_cells > 0 else 0
+        
+        if font:
+            # 探索进度
+            progress_text = f"探索: {exp_map.explored_count}/{total_cells} ({explored_percent:.0f}%)"
+            draw.text((self.padding + 10, y), progress_text, 
+                      fill=self.COLORS['text'], font=font)
+            
+            # 当前位置
+            pos_text = f"位置: {chr(ord('A') + exp_map.player_x)}{exp_map.player_y + 1}"
+            draw.text((width // 2, y), pos_text,
+                      fill=self.COLORS['text'], font=font)
+            
+            # 操作提示
+            hint_text = "发送 >坐标 移动(如 >B2)，>离开 退出"
+            draw.text((self.padding + 10, y + 28), hint_text,
+                      fill=self.COLORS['text_dim'], font=font)
+    
+    def clear_cache(self):
+        """清空缓存"""
+        self._cache.clear()
+
+
+# 全局渲染器实例（单例）
+_map_renderer_instance: Optional['MapImageRenderer'] = None
+
+
+def get_map_renderer() -> 'MapImageRenderer':
+    """获取全局地图渲染器实例"""
+    global _map_renderer_instance
+    if _map_renderer_instance is None:
+        _map_renderer_instance = MapImageRenderer()
+    return _map_renderer_instance
+
 
