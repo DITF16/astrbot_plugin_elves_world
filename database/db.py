@@ -145,6 +145,17 @@ class Database:
         if 'active_buffs' not in columns:
             cursor.execute("ALTER TABLE players ADD COLUMN active_buffs TEXT DEFAULT '{}'")
             print("[DB] 迁移: 添加 active_buffs 列到 players 表")
+        
+        # 添加 game_state 列（如果不存在）- 用于存储探索/战斗状态
+        if 'game_state' not in columns:
+            cursor.execute("ALTER TABLE players ADD COLUMN game_state TEXT DEFAULT ''")
+            print("[DB] 迁移: 添加 game_state 列到 players 表")
+        
+        # 添加 game_state_data 列（如果不存在）- 用于存储状态相关数据
+        if 'game_state_data' not in columns:
+            cursor.execute("ALTER TABLE players ADD COLUMN game_state_data TEXT DEFAULT '{}'")
+            print("[DB] 迁移: 添加 game_state_data 列到 players 表")
+
 
 
     # ==================== 玩家操作 ====================
@@ -748,4 +759,58 @@ class Database:
                 cursor = conn.cursor()
                 cursor.execute('DELETE FROM monsters WHERE owner_id = ?', (user_id,))
                 return cursor.rowcount
+
+    # ==================== 游戏状态操作 ====================
+
+    def get_game_state(self, user_id: str) -> tuple:
+        """
+        获取玩家游戏状态
+        
+        Returns:
+            (state, state_data) - state为状态类型(exploring/battling/idle)，state_data为JSON数据
+        """
+        with self._lock:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    'SELECT game_state, game_state_data FROM players WHERE user_id = ?',
+                    (user_id,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    state = row['game_state'] or ''
+                    state_data_str = row['game_state_data'] or '{}'
+                    try:
+                        state_data = json.loads(state_data_str)
+                    except:
+                        state_data = {}
+                    return state, state_data
+                return '', {}
+
+    def set_game_state(self, user_id: str, state: str, state_data: Dict = None) -> bool:
+        """
+        设置玩家游戏状态
+        
+        Args:
+            user_id: 用户ID
+            state: 状态类型 (exploring/battling/idle)
+            state_data: 状态相关数据
+        """
+        if state_data is None:
+            state_data = {}
+        
+        with self._lock:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE players 
+                    SET game_state = ?, game_state_data = ?, updated_at = ?
+                    WHERE user_id = ?
+                ''', (state, json.dumps(state_data, ensure_ascii=False), 
+                      datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_id))
+                return cursor.rowcount > 0
+
+    def clear_game_state(self, user_id: str) -> bool:
+        """清除玩家游戏状态"""
+        return self.set_game_state(user_id, '', {})
 

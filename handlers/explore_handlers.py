@@ -5,7 +5,8 @@
 
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api import logger
-from astrbot.core.utils.session_waiter import session_waiter, SessionController
+# 不再需要 session_waiter，改用数据库状态 + 前缀触发
+# from astrbot.core.utils.session_waiter import session_waiter, SessionController
 
 from typing import TYPE_CHECKING
 
@@ -98,15 +99,17 @@ class ExploreHandlers:
 
         # 检查是否有活跃地图
         active_map = self.wm.get_active_map(user_id)
+        prefix = self.plugin.game_action_prefix
 
         if active_map and not region_name:
             # 显示当前地图
             map_text = self.wm.render_map(active_map)
-            yield event.plain_result(map_text)
-
-            # 进入探索会话
-            async for _ in self._exploration_session(event, user_id, umo):
-                pass
+            yield event.plain_result(
+                f"{map_text}\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"💡 发送 \"{prefix}坐标\" 移动（如 \"{prefix}B2\"）\n"
+                f"💡 发送 \"{prefix}离开\" 退出探索"
+            )
             return
 
         if not region_name:
@@ -178,179 +181,156 @@ class ExploreHandlers:
         )
 
         # 显示地图
-        region_name = region.get("name", region_id)
+        region_display_name = region.get("name", region_id)
         map_text = self.wm.render_map(exp_map)
 
         yield event.plain_result(
-            f"🗺️ 进入了【{region_name}】！\n\n"
-            f"{map_text}"
+            f"🗺️ 进入了【{region_display_name}】！\n\n"
+            f"{map_text}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"💡 发送 \"{prefix}坐标\" 移动（如 \"{prefix}B2\"）\n"
+            f"💡 发送 \"{prefix}离开\" 退出探索"
         )
 
-        # 进入探索会话
-        async for resp in self._exploration_session(event, user_id, umo):
-            yield resp
+        # 设置游戏状态为探索中（存储到数据库）
+        self.plugin.db.set_game_state(user_id, "exploring", {
+            "region_id": region_id,
+            "region_name": region_display_name
+        })
 
-    async def _exploration_session(self, event: AstrMessageEvent, user_id: str, umo: str):
-        """探索会话"""
+    async def handle_explore_action(self, event: AstrMessageEvent, user_id: str, action: str, state_data: dict):
+        """
+        处理前缀触发的探索操作
+        
+        Args:
+            event: 消息事件
+            user_id: 用户ID
+            action: 去掉前缀后的操作内容（如 "B2", "离开", "地图"）
+            state_data: 游戏状态数据
+        """
         CellType, EventType = self._get_imports()
-        # 用于存储待处理的战斗信息
-        pending_battle = None
-
-        @session_waiter(timeout=self.plugin.explore_timeout, record_history_chains=False)
-        async def explore_loop(controller: SessionController, ev: AstrMessageEvent):
-            nonlocal pending_battle
-            msg = ev.message_str.strip()
-
-            exp_map = self.wm.get_active_map(user_id)
-            if not exp_map:
-                await ev.send(ev.plain_result("❌ 探索已结束"))
-                controller.stop()
-                return
-
-            # 离开地图
-            if msg in ["离开", "退出", "结束", "exit", "quit"]:
-                result = self.wm.complete_exploration(user_id)
-
-                # 发放奖励
-                rewards = result.get("rewards", {})
-                if rewards.get("coins", 0) > 0:
-                    self.pm.add_currency(user_id, coins=rewards["coins"])
-                if rewards.get("exp", 0) > 0:
-                    self.pm.add_exp(user_id, rewards["exp"])
-
-                await ev.send(ev.plain_result(result["message"]))
-                controller.stop()
-                return
-
-            # 显示地图
-            if msg in ["地图", "map", "查看"]:
-                map_text = self.wm.render_map(exp_map)
-                await ev.send(ev.plain_result(map_text))
-                controller.keep(timeout=self.plugin.explore_timeout, reset_timeout=True)
-                return
-
-            # 解析坐标
-            coord = self.wm.parse_coordinate(msg, exp_map)
-            if not coord:
-                await ev.send(ev.plain_result(
-                    "❓ 无效输入\n"
-                    "━━━━━━━━━━━━━━━━━━━━\n"
-                    "输入坐标移动，如: A1、B2\n"
-                    "输入「地图」查看当前地图\n"
-                    "输入「离开」结束探索"
-                ))
-                controller.keep(timeout=self.plugin.explore_timeout, reset_timeout=True)
-                return
-
-            target_x, target_y = coord
-
-            # 执行探索
-            result = self.wm.explore_cell(
-                player_id=user_id,
-                target_x=target_x,
-                target_y=target_y,
-                player_level=self.pm.get_player(user_id).get("level", 1)
+        prefix = self.plugin.game_action_prefix
+        
+        # 获取活跃地图
+        exp_map = self.wm.get_active_map(user_id)
+        if not exp_map:
+            # 地图不存在，清除状态
+            self.plugin.db.clear_game_state(user_id)
+            yield event.plain_result("❌ 探索已结束，地图数据丢失")
+            return
+        
+        # 离开地图
+        if action in ["离开", "退出", "结束", "exit", "quit"]:
+            result = self.wm.complete_exploration(user_id)
+            
+            # 发放奖励
+            rewards = result.get("rewards", {})
+            if rewards.get("coins", 0) > 0:
+                self.pm.add_currency(user_id, coins=rewards["coins"])
+            if rewards.get("exp", 0) > 0:
+                self.pm.add_exp(user_id, rewards["exp"])
+            
+            # 清除游戏状态
+            self.plugin.db.clear_game_state(user_id)
+            
+            yield event.plain_result(result["message"])
+            return
+        
+        # 显示地图
+        if action in ["地图", "map", "查看"]:
+            map_text = self.wm.render_map(exp_map)
+            yield event.plain_result(
+                f"{map_text}\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"💡 发送 \"{prefix}坐标\" 移动（如 \"{prefix}B2\"）\n"
+                f"💡 发送 \"{prefix}离开\" 退出探索"
             )
-
-            if not result.success:
-                await ev.send(ev.plain_result(f"❌ {result.message}"))
-                controller.keep(timeout=self.plugin.explore_timeout, reset_timeout=True)
-                return
-
-            # 处理探索结果
-            if result.encounter_battle:
-                # 遭遇战斗
-                await ev.send(ev.plain_result(result.message))
-
-                # 暂停探索会话，进入战斗
-                controller.stop()
-
-                # ✅ 保存战斗信息，稍后在外部处理
-                pending_battle = {
-                    "event": ev,
-                    "monster_data": result.monster_data,
-                    "weather": exp_map.weather,
-                    "is_boss": result.is_boss,
-                    "boss_id": result.boss_id
-                }
-                return
-
-            # 非战斗结果 - 处理奖励
-            if result.coins_gained > 0:
-                self.pm.add_currency(user_id, coins=result.coins_gained)
-
-            for item in result.items_gained:
-                item_id = item.get("item_id", "")
-                amount = item.get("amount", 1)
-                if item_id == "_diamonds":
-                    self.pm.add_currency(user_id, diamonds=amount)
-                elif item_id:
-                    self.pm.add_item(user_id, item_id, amount)
-
-            if result.exp_gained > 0:
-                self.pm.add_exp(user_id, result.exp_gained)
-
-            # 处理事件效果
-            if result.event_type == EventType.HEAL:
-                healed = self.pm.heal_team(user_id)
-            elif result.event_type == EventType.TRAP:
-                # 简化处理：队伍受到伤害
-                team = self.pm.get_team(user_id)
-                for m_data in team:
-                    if m_data.get("current_hp", 0) > 0:
-                        damage = int(m_data["max_hp"] * 0.15)
-                        m_data["current_hp"] = max(1, m_data["current_hp"] - damage)
-                        self.pm.update_monster_from_dict(m_data["instance_id"], m_data)
-
-            # 检查是否到达出口
-            if result.can_exit:
-                await ev.send(ev.plain_result(result.message))
-                controller.keep(timeout=self.plugin.explore_timeout, reset_timeout=True)
-                return
-
-            # 显示更新后的地图
-            exp_map = self.wm.get_active_map(user_id)
-            if exp_map:
-                map_text = self.wm.render_map(exp_map)
-                await ev.send(ev.plain_result(f"{result.message}\n\n{map_text}"))
-
-            controller.keep(timeout=self.plugin.explore_timeout, reset_timeout=True)
-
-        try:
-            await explore_loop(event)
-        except TimeoutError:
-            self.wm.clear_active_map(user_id)
-            yield event.plain_result("⏰ 探索超时，已自动退出")
-
-        # ✅ 战斗 -> 继续探索的循环
-        while pending_battle and self.battle_handlers:
-            # 进入战斗
-            async for resp in self.battle_handlers.start_battle_from_explore(
-                    event=pending_battle["event"],
-                    user_id=user_id,
-                    umo=umo,
-                    monster_data=pending_battle["monster_data"],
-                    weather=pending_battle["weather"],
-                    is_boss=pending_battle["is_boss"],
-                    boss_id=pending_battle["boss_id"]
-            ):
+            return
+        
+        # 解析坐标
+        coord = self.wm.parse_coordinate(action, exp_map)
+        if not coord:
+            yield event.plain_result(
+                f"❓ 无效输入: {action}\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"发送 \"{prefix}坐标\" 移动（如 \"{prefix}B2\"）\n"
+                f"发送 \"{prefix}地图\" 查看当前地图\n"
+                f"发送 \"{prefix}离开\" 结束探索"
+            )
+            return
+        
+        target_x, target_y = coord
+        
+        # 执行探索
+        result = self.wm.explore_cell(
+            player_id=user_id,
+            target_x=target_x,
+            target_y=target_y,
+            player_level=self.pm.get_player(user_id).get("level", 1)
+        )
+        
+        if not result.success:
+            yield event.plain_result(f"❌ {result.message}")
+            return
+        
+        # 处理探索结果
+        if result.encounter_battle:
+            # 遭遇战斗 - 切换到战斗状态
+            yield event.plain_result(result.message)
+            
+            # 设置战斗状态
+            self.plugin.db.set_game_state(user_id, "battling", {
+                "monster_data": result.monster_data,
+                "weather": exp_map.weather,
+                "is_boss": result.is_boss,
+                "boss_id": result.boss_id,
+                "from_explore": True,  # 标记是从探索进入的战斗
+                "region_id": state_data.get("region_id", ""),
+                "region_name": state_data.get("region_name", "")
+            })
+            
+            # 触发战斗开始
+            async for resp in self.battle_handlers.start_battle_from_state(event, user_id):
                 yield resp
-
-            # 战斗结束，清空待处理战斗
-            pending_battle = None
-
-            # 检查地图是否还存在（玩家可能已经被传送出去或者地图被清除）
-            exp_map = self.wm.get_active_map(user_id)
-            if not exp_map:
-                break  # 地图不存在了，退出循环
-
-            # 重新进入探索循环
-            try:
-                await explore_loop(event)
-            except TimeoutError:
-                self.wm.clear_active_map(user_id)
-                yield event.plain_result("⏰ 探索超时，已自动退出")
-                break
+            return
+        
+        # 非战斗结果 - 处理奖励
+        if result.coins_gained > 0:
+            self.pm.add_currency(user_id, coins=result.coins_gained)
+        
+        for item in result.items_gained:
+            item_id = item.get("item_id", "")
+            amount = item.get("amount", 1)
+            if item_id == "_diamonds":
+                self.pm.add_currency(user_id, diamonds=amount)
+            elif item_id:
+                self.pm.add_item(user_id, item_id, amount)
+        
+        if result.exp_gained > 0:
+            self.pm.add_exp(user_id, result.exp_gained)
+        
+        # 处理事件效果
+        if result.event_type == EventType.HEAL:
+            self.pm.heal_team(user_id)
+        elif result.event_type == EventType.TRAP:
+            # 简化处理：队伍受到伤害
+            team = self.pm.get_team(user_id)
+            for m_data in team:
+                if m_data.get("current_hp", 0) > 0:
+                    damage = int(m_data["max_hp"] * 0.15)
+                    m_data["current_hp"] = max(1, m_data["current_hp"] - damage)
+                    self.pm.update_monster_from_dict(m_data["instance_id"], m_data)
+        
+        # 显示更新后的地图
+        exp_map = self.wm.get_active_map(user_id)
+        if exp_map:
+            map_text = self.wm.render_map(exp_map)
+            yield event.plain_result(
+                f"{result.message}\n\n"
+                f"{map_text}\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"💡 发送 \"{prefix}坐标\" 继续移动"
+            )
 
     async def cmd_map(self, event: AstrMessageEvent):
         """

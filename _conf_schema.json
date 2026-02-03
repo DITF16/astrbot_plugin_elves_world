@@ -183,9 +183,16 @@
     "description": "指令前缀",
     "type": "string",
     "default": "精灵",
-    "hint": "游戏指令的触发前缀，如设为'pm'则使用/pm 背包",
+    "hint": "游戏指令的触发前缀，如设为'pm'则使用/pm 背包"
+  },
+  "game_action_prefix": {
+    "description": "游戏操作前缀",
+    "type": "string",
+    "default": "。",
+    "hint": "探索和战斗时的操作前缀，如设为'。'则用 。A1 移动、。1 使用技能。设为空则不需要前缀（但可能与聊天冲突）",
     "obvious_hint": true
   },
+
   "debug": {
     "description": "调试设置",
     "type": "object",

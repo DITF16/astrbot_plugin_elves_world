@@ -5,10 +5,13 @@
 
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api import logger
-from astrbot.core.utils.session_waiter import session_waiter, SessionController
+# 不再需要 session_waiter，改用数据库状态 + 前缀触发
+# from astrbot.core.utils.session_waiter import session_waiter, SessionController
 
 from typing import TYPE_CHECKING, Dict
 import random
+
+from astrbot.core.utils.session_waiter import session_waiter, SessionController
 
 if TYPE_CHECKING:
     from ..main import MonsterGamePlugin
@@ -456,3 +459,302 @@ class BattleHandlers:
         if exp_map:
             map_text = self.world_manager.render_map(exp_map)
             await event.send(event.plain_result(f"\n{map_text}"))
+
+    # ==================== 前缀触发的战斗处理 ====================
+
+    async def start_battle_from_state(self, event: AstrMessageEvent, user_id: str):
+        """
+        从数据库状态启动战斗（由探索触发）
+        """
+        MonsterInstance, BattleState, BattleAction, ActionType, BattleType = self._get_imports()
+        
+        # 获取战斗状态数据
+        state, state_data = self.plugin.db.get_game_state(user_id)
+        if state != "battling" or not state_data:
+            yield event.plain_result("❌ 战斗状态异常")
+            return
+        
+        umo = event.unified_msg_origin
+        team = self.pm.get_team(user_id)
+        
+        monster_data = state_data.get("monster_data", {})
+        weather = state_data.get("weather", "clear")
+        is_boss = state_data.get("is_boss", False)
+        boss_id = state_data.get("boss_id", "")
+        
+        # 创建战斗
+        if is_boss:
+            battle = self.battle_system.create_boss_battle(
+                player_id=user_id,
+                player_team=team,
+                boss_id=boss_id,
+                weather=weather
+            )
+        else:
+            battle = self.battle_system.create_wild_battle(
+                player_id=user_id,
+                player_team=team,
+                wild_monster=monster_data,
+                weather=weather
+            )
+        
+        if not battle:
+            self.plugin.db.clear_game_state(user_id)
+            yield event.plain_result("❌ 创建战斗失败")
+            return
+        
+        self._active_battles[umo] = battle
+        
+        # 显示战斗界面
+        battle_text = self.battle_system.get_battle_status_text(battle)
+        skill_menu = self.battle_system.get_skill_menu_text(battle)
+        prefix = self.plugin.game_action_prefix
+        
+        battle_type_text = "👹 BOSS战！" if is_boss else "⚔️ 战斗开始！"
+        
+        yield event.plain_result(
+            f"{battle_type_text}\n\n"
+            f"{battle_text}\n\n"
+            f"{skill_menu}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"💡 发送 \"{prefix}数字\" 使用技能（如 {prefix}1）\n"
+            f"💡 发送 \"{prefix}逃跑\" 逃离战斗\n"
+            f"💡 发送 \"{prefix}捕捉\" 尝试捕捉"
+        )
+
+    async def handle_battle_action(self, event: AstrMessageEvent, user_id: str, action: str, state_data: dict):
+        """
+        处理前缀触发的战斗操作
+        
+        Args:
+            event: 消息事件
+            user_id: 用户ID
+            action: 去掉前缀后的操作内容（如 "1", "逃跑", "捕捉"）
+            state_data: 游戏状态数据
+        """
+        MonsterInstance, BattleState, BattleAction, ActionType, BattleType = self._get_imports()
+        prefix = self.plugin.game_action_prefix
+        umo = event.unified_msg_origin
+        
+        # 获取活跃战斗
+        battle = self._active_battles.get(umo)
+        if not battle or not battle.is_active:
+            # 战斗不存在，清除状态
+            self.plugin.db.clear_game_state(user_id)
+            yield event.plain_result("❌ 战斗已结束")
+            return
+        
+        player_monster = battle.player_monster
+        if not player_monster:
+            self.clear_active_battle(umo)
+            self.plugin.db.clear_game_state(user_id)
+            yield event.plain_result("❌ 战斗数据异常")
+            return
+        
+        # 构建玩家行动
+        battle_action = None
+        
+        # 逃跑
+        if action in ["逃跑", "逃", "跑", "run", "flee", "逃走"]:
+            battle_action = BattleAction(action_type=ActionType.FLEE, actor_id="")
+        
+        # 捕捉
+        elif action in ["捕捉", "捕", "抓", "catch", "捕获"]:
+            battle_action = BattleAction(action_type=ActionType.CATCH, actor_id="")
+        
+        # 换精灵
+        elif action.startswith("换") or action.lower().startswith("switch"):
+            parts = action.split()
+            if len(parts) >= 2:
+                try:
+                    switch_idx = int(parts[1]) - 1
+                    available = battle.get_player_available_monsters()
+                    
+                    for idx, m in available:
+                        if idx == switch_idx:
+                            battle_action = BattleAction(
+                                action_type=ActionType.SWITCH,
+                                actor_id=player_monster.get("instance_id", ""),
+                                switch_to_id=m.get("instance_id", "")
+                            )
+                            break
+                    
+                    if not battle_action:
+                        yield event.plain_result("❌ 无效的精灵序号")
+                        return
+                except ValueError:
+                    yield event.plain_result(f"❌ 请输入正确的序号，如: {prefix}换 2")
+                    return
+            else:
+                # 显示可换的精灵
+                available = battle.get_player_available_monsters()
+                lines = ["可切换的精灵："]
+                for idx, m in available:
+                    if idx != battle.player_active_index:
+                        name = m.get("nickname") or m.get("name", "???")
+                        hp = m.get("current_hp", 0)
+                        max_hp = m.get("max_hp", 1)
+                        lines.append(f"{idx + 1}. {name} HP:{hp}/{max_hp}")
+                lines.append(f"发送 {prefix}换 序号 切换，如: {prefix}换 2")
+                yield event.plain_result("\n".join(lines))
+                return
+        
+        # 技能（数字）
+        elif action.isdigit():
+            skill_index = int(action)
+            skills = player_monster.get("skills", [])
+            
+            if skill_index < 1 or skill_index > len(skills):
+                yield event.plain_result(f"❌ 请输入 1 到 {len(skills)} 的技能序号")
+                return
+            
+            skill_id = skills[skill_index - 1]
+            battle_action = BattleAction(
+                action_type=ActionType.SKILL,
+                actor_id=player_monster.get("instance_id", ""),
+                skill_id=skill_id
+            )
+        
+        else:
+            yield event.plain_result(
+                f"❓ 无效输入: {action}\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"发送 \"{prefix}1-4\" 使用技能\n"
+                f"发送 \"{prefix}逃跑\" 逃离战斗\n"
+                f"发送 \"{prefix}捕捉\" 捕捉精灵\n"
+                f"发送 \"{prefix}换 序号\" 切换精灵"
+            )
+            return
+        
+        # 执行回合
+        turn_result = self.battle_system.process_turn(battle, battle_action)
+        turn_messages = "\n".join(turn_result.messages)
+        
+        # 战斗结束判定
+        if turn_result.battle_ended:
+            async for resp in self._handle_battle_end_with_state(event, user_id, umo, battle, turn_result, turn_messages, state_data):
+                yield resp
+            return
+        
+        # 战斗继续 - 保存精灵状态
+        for m_data in battle.player_team:
+            self.pm.update_monster_from_dict(m_data.get("instance_id", ""), m_data)
+        
+        # 检查是否需要换精灵
+        if turn_result.player_monster_fainted:
+            available = battle.get_player_available_monsters()
+            if available:
+                lines = [f"{turn_messages}\n", "💀 你的精灵倒下了！请选择下一只："]
+                for idx, m in available:
+                    name = m.get("nickname") or m.get("name", "???")
+                    hp = m.get("current_hp", 0)
+                    max_hp = m.get("max_hp", 1)
+                    lines.append(f"{idx + 1}. {name} HP:{hp}/{max_hp}")
+                lines.append(f"发送 \"{prefix}换 序号\" 切换精灵")
+                yield event.plain_result("\n".join(lines))
+                return
+        
+        # 显示战斗状态
+        battle_text = self.battle_system.get_battle_status_text(battle)
+        skill_menu = self.battle_system.get_skill_menu_text(battle)
+        
+        yield event.plain_result(
+            f"{turn_messages}\n\n"
+            f"{battle_text}\n\n"
+            f"{skill_menu}"
+        )
+
+    async def _handle_battle_end_with_state(self, event, user_id, umo, battle, turn_result, turn_messages, state_data):
+        """处理战斗结束（带状态管理）"""
+        MonsterInstance, BattleState, BattleAction, ActionType, BattleType = self._get_imports()
+        
+        self.clear_active_battle(umo)
+        prefix = self.plugin.game_action_prefix
+        from_explore = state_data.get("from_explore", False)
+        
+        if turn_result.winner == "player":
+            # 胜利
+            exp_buff = self.pm.get_buff_multiplier(user_id, "exp_rate")
+            coin_buff = self.pm.get_buff_multiplier(user_id, "coin_rate")
+            exp_gained = int(battle.exp_gained * self.plugin.exp_multiplier * exp_buff)
+            coins_gained = int(battle.coins_gained * self.plugin.coin_multiplier * coin_buff)
+            
+            # 发放奖励
+            self.pm.add_currency(user_id, coins=coins_gained)
+            self.pm.record_battle(user_id, is_win=True)
+            
+            # 精灵获得经验
+            team = self.pm.get_team(user_id)
+            level_up_messages = []
+            active_count = sum(1 for m in team if m.get("current_hp", 0) > 0)
+            exp_each = exp_gained // max(1, active_count)
+            
+            for m_data in team:
+                if m_data.get("current_hp", 0) > 0:
+                    monster = MonsterInstance.from_dict(m_data, self.config)
+                    result = monster.add_exp(exp_each, self.config)
+                    
+                    if result["leveled_up"]:
+                        level_up_messages.append(f"🎉 {monster.get_display_name()} 升到了 Lv.{monster.level}！")
+                        if result["can_evolve"]:
+                            level_up_messages.append(f"✨ {monster.get_display_name()} 可以进化了！")
+                    
+                    self.pm.update_monster(monster)
+            
+            # 更新探索地图状态
+            exp_map = self.world_manager.get_active_map(user_id)
+            if exp_map:
+                if battle.battle_type == BattleType.BOSS:
+                    self.world_manager.mark_boss_defeated(user_id)
+                    self.pm.record_boss_clear(user_id, battle.boss_id)
+                else:
+                    self.world_manager.mark_monster_defeated(user_id)
+            
+            level_up_text = "\n".join(level_up_messages)
+            if level_up_text:
+                level_up_text = "\n" + level_up_text
+            
+            yield event.plain_result(
+                f"{turn_messages}\n\n"
+                f"🏆 战斗胜利！\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"获得 ✨{exp_gained} 经验\n"
+                f"获得 💰{coins_gained} 金币"
+                f"{level_up_text}"
+            )
+        
+        elif turn_result.winner == "flee":
+            yield event.plain_result(f"{turn_messages}")
+        
+        elif turn_result.winner == "enemy":
+            self.pm.record_battle(user_id, is_win=False)
+            yield event.plain_result(
+                f"{turn_messages}\n\n"
+                f"💀 战斗失败...\n"
+                f"发送 /精灵 治疗 恢复精灵"
+            )
+        
+        # 战斗结束后，恢复探索状态或清除状态
+        if from_explore:
+            exp_map = self.world_manager.get_active_map(user_id)
+            if exp_map:
+                # 恢复探索状态
+                self.plugin.db.set_game_state(user_id, "exploring", {
+                    "region_id": state_data.get("region_id", ""),
+                    "region_name": state_data.get("region_name", "")
+                })
+                
+                map_text = self.world_manager.render_map(exp_map)
+                yield event.plain_result(
+                    f"\n📍 继续探索中...\n\n"
+                    f"{map_text}\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"💡 发送 \"{prefix}坐标\" 继续移动"
+                )
+            else:
+                # 地图不存在，清除状态
+                self.plugin.db.clear_game_state(user_id)
+        else:
+            # 非探索战斗，清除状态
+            self.plugin.db.clear_game_state(user_id)
+

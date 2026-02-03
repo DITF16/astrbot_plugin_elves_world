@@ -1,6 +1,7 @@
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.api import logger, AstrBotConfig
+from astrbot.core.star.filter.event_message_type import EventMessageType
 from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
 from pathlib import Path
@@ -71,6 +72,55 @@ class MonsterGamePlugin(Star):
 
         logger.info("🎮 精灵对战游戏插件加载成功！")
 
+    # ==================== 前缀消息处理器 ====================
+    
+    @filter.event_message_type(EventMessageType.ALL, priority=1)
+    async def handle_game_action(self, event: AstrMessageEvent):
+        """
+        处理带前缀的游戏操作消息
+        
+        当玩家在探索或战斗中时，只有带前缀的消息才会被处理为游戏操作
+        不带前缀的消息会被忽略，玩家可以正常聊天
+        """
+        prefix = self.game_action_prefix
+        if not prefix:
+            return  # 没有配置前缀，不处理
+        
+        msg = event.message_str.strip()
+        
+        # 检查消息是否以前缀开头
+        if not msg.startswith(prefix):
+            return  # 不是游戏操作消息，忽略
+        
+        # 去掉前缀，获取实际操作内容
+        action = msg[len(prefix):].strip()
+        if not action:
+            return  # 前缀后没有内容，忽略
+        
+        user_id = event.get_sender_id()
+        
+        # 检查玩家是否存在
+        if not self.db.player_exists(user_id):
+            return  # 玩家不存在，忽略
+        
+        # 获取玩家游戏状态
+        state, state_data = self.db.get_game_state(user_id)
+        
+        if not state:
+            return  # 玩家不在游戏状态中，忽略
+        
+        # 根据状态分发处理
+        if state == "exploring":
+            async for result in self.explore_handlers.handle_explore_action(event, user_id, action, state_data):
+                yield result
+            event.stop_event()
+            
+        elif state == "battling":
+            async for result in self.battle_handlers.handle_battle_action(event, user_id, action, state_data):
+                yield result
+            event.stop_event()
+
+
     def _load_settings(self):
         """从AstrBot配置加载游戏设置"""
         # 游戏基础设置
@@ -111,8 +161,14 @@ class MonsterGamePlugin(Star):
         debug = self.astrbot_config.get("debug", {})
         self.debug_mode = debug.get("enabled", False)
         self.show_damage_details = debug.get("show_damage_details", False)
-        self.show_hidden_cells = debug.get("show_hidden_cells", False)
         self.auto_win = debug.get("auto_win", False)
+
+
+
+        # 游戏操作前缀（探索/战斗时使用）
+        self.game_action_prefix = self.astrbot_config.get("game_action_prefix", ">")
+
+
 
         if self.debug_mode:
             logger.info("🔧 精灵游戏调试模式已启用")
