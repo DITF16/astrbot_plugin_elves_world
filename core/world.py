@@ -1251,30 +1251,21 @@ class MapImageRenderer:
         return self._emoji_font
     
     def _load_font(self, size: int):
-        """加载字体，优先使用系统中支持中文的字体"""
+        """加载字体，使用插件自带的字体文件"""
         from PIL import ImageFont
         import os
         
-        # 尝试加载的字体列表（按优先级）
-        font_candidates = [
-            # Windows
-            "C:/Windows/Fonts/msyh.ttc",      # 微软雅黑
-            "C:/Windows/Fonts/simhei.ttf",    # 黑体
-            "C:/Windows/Fonts/simsun.ttc",    # 宋体
-            # Linux
-            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            # macOS
-            "/System/Library/Fonts/PingFang.ttc",
-            "/System/Library/Fonts/STHeiti Light.ttc",
-        ]
+        # 获取插件目录
+        plugin_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
-        for font_path in font_candidates:
-            if os.path.exists(font_path):
-                try:
-                    return ImageFont.truetype(font_path, size)
-                except Exception:
-                    continue
+        # 使用插件自带的普通字体（跨平台统一）
+        font_path = os.path.join(plugin_dir, "assets", "fonts", "NotoSansSC-Regular.ttf")
+        
+        if os.path.exists(font_path):
+            try:
+                return ImageFont.truetype(font_path, size)
+            except Exception:
+                pass
         
         # 回退到默认字体
         try:
@@ -1282,35 +1273,29 @@ class MapImageRenderer:
         except Exception:
             return None
     
+
+    
     def _load_emoji_font(self, size: int):
-        """加载 Emoji 字体（NotoColorEmoji）"""
+        """加载 Emoji 字体，使用插件自带的字体文件"""
         from PIL import ImageFont
         import os
         
         # 获取插件目录
         plugin_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
-        # Emoji 字体候选列表
-        emoji_font_candidates = [
-            # 插件自带字体（推荐）
-            os.path.join(plugin_dir, "assets", "fonts", "NotoColorEmoji.ttf"),
-            # Windows
-            "C:/Windows/Fonts/seguiemj.ttf",      # Segoe UI Emoji
-            # Linux
-            "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
-            "/usr/share/fonts/noto-emoji/NotoColorEmoji.ttf",
-            # macOS (Apple Color Emoji 不支持 PIL，跳过)
-        ]
+        # 使用插件自带字体（跨平台统一）
+        font_path = os.path.join(plugin_dir, "assets", "fonts", "NotoColorEmoji.ttf")
         
-        for font_path in emoji_font_candidates:
-            if os.path.exists(font_path):
-                try:
-                    return ImageFont.truetype(font_path, size)
-                except Exception:
-                    continue
+        if os.path.exists(font_path):
+            try:
+                return ImageFont.truetype(font_path, size)
+            except Exception:
+                pass
         
         # 回退到普通字体（Emoji 可能显示为方块）
         return self._get_font()
+    
+
     
     def _get_map_hash(self, exp_map: 'ExplorationMap') -> str:
         """计算地图状态的哈希值，用于缓存"""
