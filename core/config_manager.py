@@ -76,7 +76,7 @@ class ConfigManager:
             try:
                 callback()
             except Exception as e:
-                print(f"配置更新回调执行失败: {e}")
+                logger.error(f"配置更新回调执行失败: {e}")
 
     def _load_config(self, config_name: str) -> Dict:
         """加载配置文件"""
