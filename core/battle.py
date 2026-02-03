@@ -325,7 +325,7 @@ class BattleSystem:
 
     # ==================== 回合处理 ====================
 
-    def process_turn(self,
+    async def process_turn(self,
                      battle: BattleState,
                      player_action: BattleAction) -> TurnResult:
         """
@@ -353,7 +353,7 @@ class BattleSystem:
 
         # 2. 检查捕捉
         if player_action.action_type == ActionType.CATCH:
-            catch_result = self._process_catch(battle)
+            catch_result = await self._process_catch(battle)
             result.messages.append(catch_result["message"])
             if catch_result["success"]:
                 result.battle_ended = True
@@ -943,7 +943,7 @@ class BattleSystem:
         else:
             return {"success": False, "message": "逃跑失败！"}
 
-    def _process_catch(self, battle: BattleState) -> Dict:
+    async def _process_catch(self, battle: BattleState) -> Dict:
         """处理捕捉"""
         if not battle.can_catch:
             return {"success": False, "message": "无法捕捉这只精灵！"}
@@ -969,7 +969,7 @@ class BattleSystem:
         buff_multiplier = 1.0
         buff_msg = ""
         if self.player_manager and battle.player_id:
-            buff_multiplier = self.player_manager.get_buff_multiplier(battle.player_id, "catch_rate")
+            buff_multiplier = await self.player_manager.get_buff_multiplier(battle.player_id, "catch_rate")
             if buff_multiplier > 1.0:
                 buff_msg = f" (🎯捕捉率+{int((buff_multiplier-1)*100)}%)"
         

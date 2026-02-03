@@ -462,7 +462,7 @@ class BattleHandlers:
                 return
 
             # 执行回合
-            turn_result = self.battle_system.process_turn(battle, action)
+            turn_result = await self.battle_system.process_turn(battle, action)
 
             # 构建回合消息
             turn_messages = "\n".join(turn_result.messages)
@@ -846,7 +846,7 @@ class BattleHandlers:
         
         
         # 执行回合
-        turn_result = self.battle_system.process_turn(battle, battle_action)
+        turn_result = await self.battle_system.process_turn(battle, battle_action)
         turn_messages = "\n".join(turn_result.messages)
         
         # 战斗结束判定
