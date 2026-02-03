@@ -1,7 +1,7 @@
 """
 数据库管理模块
 - 使用SQLite存储玩家数据
-- 支持异步操作
+- 支持异步操作（通过 asyncio.to_thread 包装同步操作）
 - 自动建表和迁移
 """
 
@@ -9,10 +9,12 @@ import sqlite3
 import json
 import asyncio
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from contextlib import contextmanager
 from threading import Lock
 from datetime import datetime
+from astrbot.api import logger
+
 
 
 class Database:
@@ -144,17 +146,20 @@ class Database:
         # 添加 active_buffs 列（如果不存在）
         if 'active_buffs' not in columns:
             cursor.execute("ALTER TABLE players ADD COLUMN active_buffs TEXT DEFAULT '{}'")
-            print("[DB] 迁移: 添加 active_buffs 列到 players 表")
+            logger.info("[精灵世界/DB] 迁移: 添加 active_buffs 列到 players 表")
+
         
         # 添加 game_state 列（如果不存在）- 用于存储探索/战斗状态
         if 'game_state' not in columns:
             cursor.execute("ALTER TABLE players ADD COLUMN game_state TEXT DEFAULT ''")
-            print("[DB] 迁移: 添加 game_state 列到 players 表")
+            logger.info("[精灵世界/DB] 迁移: 添加 game_state 列到 players 表")
+
         
         # 添加 game_state_data 列（如果不存在）- 用于存储状态相关数据
         if 'game_state_data' not in columns:
             cursor.execute("ALTER TABLE players ADD COLUMN game_state_data TEXT DEFAULT '{}'")
-            print("[DB] 迁移: 添加 game_state_data 列到 players 表")
+            logger.info("[精灵世界/DB] 迁移: 添加 game_state_data 列到 players 表")
+
 
 
 
@@ -809,6 +814,151 @@ class Database:
                 ''', (state, json.dumps(state_data, ensure_ascii=False), 
                       datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_id))
                 return cursor.rowcount > 0
+
+
+    # ==================== 异步包装方法 ====================
+    # 以下方法通过 asyncio.to_thread() 将同步数据库操作放入线程池执行，
+    # 避免阻塞事件循环，适用于异步环境（如 AstrBot 插件）。
+    # 
+    # 使用方式: await db.async_get_player(user_id) 替代 db.get_player(user_id)
+
+    async def async_player_exists(self, user_id: str) -> bool:
+        """[异步] 检查玩家是否存在"""
+        return await asyncio.to_thread(self.player_exists, user_id)
+
+    async def async_create_player(self, user_id: str, name: str) -> Dict:
+        """[异步] 创建新玩家"""
+        return await asyncio.to_thread(self.create_player, user_id, name)
+
+    async def async_get_player(self, user_id: str) -> Optional[Dict]:
+        """[异步] 获取玩家数据"""
+        return await asyncio.to_thread(self.get_player, user_id)
+
+    async def async_update_player(self, user_id: str, updates: Dict) -> bool:
+        """[异步] 更新玩家数据"""
+        return await asyncio.to_thread(self.update_player, user_id, updates)
+
+    async def async_add_player_currency(self, user_id: str, coins: int = 0, diamonds: int = 0) -> bool:
+        """[异步] 增加玩家货币"""
+        return await asyncio.to_thread(self.add_player_currency, user_id, coins, diamonds)
+
+    async def async_consume_stamina(self, user_id: str, amount: int) -> bool:
+        """[异步] 消耗体力"""
+        return await asyncio.to_thread(self.consume_stamina, user_id, amount)
+
+    async def async_restore_stamina(self, user_id: str, amount: int) -> int:
+        """[异步] 恢复体力"""
+        return await asyncio.to_thread(self.restore_stamina, user_id, amount)
+
+    async def async_add_player_exp(self, user_id: str, exp: int) -> Dict:
+        """[异步] 增加玩家经验"""
+        return await asyncio.to_thread(self.add_player_exp, user_id, exp)
+
+    async def async_record_battle_result(self, user_id: str, is_win: bool):
+        """[异步] 记录战斗结果"""
+        return await asyncio.to_thread(self.record_battle_result, user_id, is_win)
+
+    async def async_add_monster(self, owner_id: str, monster_data: Dict) -> bool:
+        """[异步] 添加精灵到玩家背包"""
+        return await asyncio.to_thread(self.add_monster, owner_id, monster_data)
+
+    async def async_get_player_monsters(self, owner_id: str) -> List[Dict]:
+        """[异步] 获取玩家所有精灵"""
+        return await asyncio.to_thread(self.get_player_monsters, owner_id)
+
+    async def async_get_monster(self, instance_id: str) -> Optional[Dict]:
+        """[异步] 获取单个精灵数据"""
+        return await asyncio.to_thread(self.get_monster, instance_id)
+
+    async def async_update_monster(self, instance_id: str, monster_data: Dict) -> bool:
+        """[异步] 更新精灵数据"""
+        return await asyncio.to_thread(self.update_monster, instance_id, monster_data)
+
+    async def async_delete_monster(self, instance_id: str) -> bool:
+        """[异步] 删除精灵（放生）"""
+        return await asyncio.to_thread(self.delete_monster, instance_id)
+
+    async def async_get_player_team(self, owner_id: str) -> List[Dict]:
+        """[异步] 获取玩家队伍精灵"""
+        return await asyncio.to_thread(self.get_player_team, owner_id)
+
+    async def async_set_team(self, owner_id: str, monster_ids: List[str]) -> bool:
+        """[异步] 设置玩家队伍"""
+        return await asyncio.to_thread(self.set_team, owner_id, monster_ids)
+
+    async def async_get_player_monster_count(self, owner_id: str) -> int:
+        """[异步] 获取玩家精灵数量"""
+        return await asyncio.to_thread(self.get_player_monster_count, owner_id)
+
+    async def async_get_inventory(self, owner_id: str) -> Dict[str, int]:
+        """[异步] 获取玩家背包道具"""
+        return await asyncio.to_thread(self.get_inventory, owner_id)
+
+    async def async_add_item(self, owner_id: str, item_id: str, amount: int = 1) -> int:
+        """[异步] 添加道具"""
+        return await asyncio.to_thread(self.add_item, owner_id, item_id, amount)
+
+    async def async_consume_item(self, owner_id: str, item_id: str, amount: int = 1) -> bool:
+        """[异步] 消耗道具"""
+        return await asyncio.to_thread(self.consume_item, owner_id, item_id, amount)
+
+    async def async_get_item_count(self, owner_id: str, item_id: str) -> int:
+        """[异步] 获取道具数量"""
+        return await asyncio.to_thread(self.get_item_count, owner_id, item_id)
+
+    async def async_get_boss_record(self, user_id: str, boss_id: str) -> Optional[Dict]:
+        """[异步] 获取BOSS击杀记录"""
+        return await asyncio.to_thread(self.get_boss_record, user_id, boss_id)
+
+    async def async_record_boss_clear(self, user_id: str, boss_id: str, time_seconds: int = None) -> Dict:
+        """[异步] 记录BOSS通关"""
+        return await asyncio.to_thread(self.record_boss_clear, user_id, boss_id, time_seconds)
+
+    async def async_is_boss_first_cleared(self, user_id: str, boss_id: str) -> bool:
+        """[异步] 检查是否已首次通关BOSS"""
+        return await asyncio.to_thread(self.is_boss_first_cleared, user_id, boss_id)
+
+    async def async_get_leaderboard(self, order_by: str = "wins", limit: int = 10) -> List[Dict]:
+        """[异步] 获取排行榜"""
+        return await asyncio.to_thread(self.get_leaderboard, order_by, limit)
+
+    async def async_get_total_players(self) -> int:
+        """[异步] 获取总玩家数"""
+        return await asyncio.to_thread(self.get_total_players)
+
+    async def async_get_total_monsters(self) -> int:
+        """[异步] 获取总精灵数"""
+        return await asyncio.to_thread(self.get_total_monsters)
+
+    async def async_get_total_battles(self) -> int:
+        """[异步] 获取总战斗次数"""
+        return await asyncio.to_thread(self.get_total_battles)
+
+    async def async_get_players(self, limit: int = 20, offset: int = 0) -> List[Dict]:
+        """[异步] 获取玩家列表（分页）"""
+        return await asyncio.to_thread(self.get_players, limit, offset)
+
+    async def async_delete_player(self, user_id: str) -> bool:
+        """[异步] 删除玩家"""
+        return await asyncio.to_thread(self.delete_player, user_id)
+
+    async def async_delete_player_monsters(self, user_id: str) -> int:
+        """[异步] 删除玩家所有精灵"""
+        return await asyncio.to_thread(self.delete_player_monsters, user_id)
+
+    async def async_get_game_state(self, user_id: str) -> Tuple[str, Dict]:
+        """[异步] 获取玩家游戏状态"""
+        return await asyncio.to_thread(self.get_game_state, user_id)
+
+    async def async_set_game_state(self, user_id: str, state: str, state_data: Dict = None) -> bool:
+        """[异步] 设置玩家游戏状态"""
+        return await asyncio.to_thread(self.set_game_state, user_id, state, state_data)
+
+    async def async_clear_game_state(self, user_id: str) -> bool:
+        """[异步] 清除玩家游戏状态"""
+        return await asyncio.to_thread(self.clear_game_state, user_id)
+
+    # ==================== 同步便捷方法 ====================
 
     def clear_game_state(self, user_id: str) -> bool:
         """清除玩家游戏状态"""
