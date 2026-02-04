@@ -393,6 +393,7 @@ class BattleHandlers:
                 parts = msg.split(maxsplit=1)
                 
                 # 获取玩家背包中的精灵球
+                player = await self.pm.get_player(user_id)
                 inventory = player.get("inventory", {})
                 items_config = self.config.items
                 pokeballs = {}
