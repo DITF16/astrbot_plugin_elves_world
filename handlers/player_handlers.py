@@ -686,7 +686,7 @@ class PlayerHandlers:
                     percent = int((buff_value - 1) * 100)
 
                     # 管理员日志
-                    print(
+                    logger.info(
                         f"[道具使用] 玩家 {user_id} 使用 {item['name']} - {buff_names.get(buff_type, buff_type)} +{percent}%，持续 {duration} 分钟")
 
                     yield event.plain_result(

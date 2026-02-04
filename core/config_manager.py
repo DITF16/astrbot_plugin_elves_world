@@ -2,16 +2,26 @@
 配置管理器 - 统一管理所有游戏配置的加载、保存和热更新
 
 支持异步操作，避免阻塞事件循环
+增强错误处理：JSON解析失败时保留旧配置，避免数据丢失
 """
 
 import json
 import shutil
 import asyncio
 from pathlib import Path
-from typing import Dict, Optional, Callable, List
+from typing import Dict, Optional, Callable, List, Set
 from threading import Lock
 import time
 from astrbot.api import logger
+
+
+class ConfigLoadError(Exception):
+    """配置加载错误异常"""
+    def __init__(self, config_name: str, filepath: Path, original_error: Exception):
+        self.config_name = config_name
+        self.filepath = filepath
+        self.original_error = original_error
+        super().__init__(f"Failed to load config '{config_name}' from {filepath}: {original_error}")
 
 
 class ConfigManager:
@@ -21,6 +31,7 @@ class ConfigManager:
     - 支持热更新（Web后台修改后自动生效）
     - 线程安全
     - 支持异步操作（避免阻塞事件循环）
+    - 增强错误处理：JSON解析失败时保留旧配置，防止数据覆盖
     """
 
     CONFIG_FILES = {
@@ -52,6 +63,9 @@ class ConfigManager:
         self._cache_time: Dict[str, float] = {}
         self._lock = Lock()
 
+        # 记录加载失败的配置（防止被空数据覆盖）
+        self._corrupted_configs: Set[str] = set()
+
         # 更新回调（支持同步和异步回调）
         self._update_callbacks: List[Callable] = []
 
@@ -76,10 +90,19 @@ class ConfigManager:
         """同步重新加载所有配置（仅供初始化使用）"""
         with self._lock:
             for config_name in self.CONFIG_FILES:
-                self._load_config_sync(config_name)
+                try:
+                    self._load_config_sync(config_name)
+                except ConfigLoadError as e:
+                    # 记录错误但不中断其他配置加载
+                    logger.error(f"❌ {e}")
 
     def _load_config_sync(self, config_name: str) -> Dict:
-        """同步加载单个配置文件"""
+        """
+        同步加载单个配置文件
+        
+        Raises:
+            ConfigLoadError: 当配置文件损坏或无法解析时抛出
+        """
         filename = self.CONFIG_FILES.get(config_name)
         if not filename:
             return {}
@@ -87,6 +110,7 @@ class ConfigManager:
         filepath = self.data_path / filename
         if not filepath.exists():
             logger.warning(f"⚠️ 配置文件不存在: {filepath}")
+            # 文件不存在是正常情况（首次运行），设置空缓存
             self._cache[config_name] = {}
             return {}
 
@@ -99,23 +123,53 @@ class ConfigManager:
                 if isinstance(value, dict) and 'id' not in value:
                     value['id'] = key
 
+            # 加载成功，从损坏列表中移除（如果之前在里面）
+            self._corrupted_configs.discard(config_name)
+
             # 存入缓存
             self._cache[config_name] = data
             self._cache_time[config_name] = time.time()
 
             logger.info(f"✅ 已加载配置 {config_name}: {len(data)} 项")
             return data
+
         except json.JSONDecodeError as e:
+            # JSON格式错误 - 标记为损坏，保留旧缓存
+            self._corrupted_configs.add(config_name)
             logger.error(f"❌ 配置文件JSON格式错误 {filepath}: {e}")
-            self._cache[config_name] = {}
-            return {}
+            logger.warning(f"⚠️ 配置 '{config_name}' 已标记为损坏，保留旧缓存，禁止保存")
+            
+            # 不修改缓存！保留之前的有效数据
+            if config_name not in self._cache:
+                raise ConfigLoadError(config_name, filepath, e)
+            
+            return self._cache.get(config_name, {})
+
         except Exception as e:
+            # 其他错误 - 同样标记为损坏
+            self._corrupted_configs.add(config_name)
             logger.error(f"❌ 加载配置文件失败 {filepath}: {e}")
-            self._cache[config_name] = {}
-            return {}
+            
+            if config_name not in self._cache:
+                raise ConfigLoadError(config_name, filepath, e)
+            
+            return self._cache.get(config_name, {})
 
     def _save_config_sync(self, config_name: str, data: Dict) -> bool:
-        """同步保存配置文件"""
+        """
+        同步保存配置文件
+        
+        安全机制：
+        1. 如果配置被标记为损坏，拒绝保存以防止数据丢失
+        2. 使用临时文件+原子替换，避免写入中断导致文件损坏
+        3. 写入后验证JSON有效性
+        """
+        # 安全检查：拒绝保存损坏的配置
+        if config_name in self._corrupted_configs:
+            logger.error(f"🛡️ 安全保护：配置 '{config_name}' 之前加载失败，拒绝保存以防止数据丢失")
+            logger.error(f"   请先手动修复配置文件，然后调用 reload_all() 重新加载")
+            return False
+        
         filename = self.CONFIG_FILES.get(config_name)
         if not filename:
             return False
@@ -123,14 +177,33 @@ class ConfigManager:
         filepath = self.data_path / filename
 
         try:
+            # 先写入临时文件，成功后再替换（原子写入）
+            temp_filepath = filepath.with_suffix('.json.tmp')
+            
             with self._lock:
-                with open(filepath, 'w', encoding='utf-8') as f:
+                with open(temp_filepath, 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
+                
+                # 验证写入的JSON是否有效
+                with open(temp_filepath, 'r', encoding='utf-8') as f:
+                    json.load(f)  # 如果解析失败会抛异常
+                
+                # 替换原文件（原子操作）
+                temp_filepath.replace(filepath)
+                
                 self._cache[config_name] = data
                 self._cache_time[config_name] = time.time()
+            
             return True
         except Exception as e:
             logger.error(f"❌ 保存配置 {config_name} 失败: {e}")
+            # 清理临时文件
+            temp_filepath = filepath.with_suffix('.json.tmp')
+            if temp_filepath.exists():
+                try:
+                    temp_filepath.unlink()
+                except:
+                    pass
             return False
 
     # ==================== 异步方法（推荐在协程中使用）====================
@@ -213,6 +286,28 @@ class ConfigManager:
         回调可以是同步函数或异步函数（async def）
         """
         self._update_callbacks.append(callback)
+
+    def is_corrupted(self, config_name: str) -> bool:
+        """检查配置是否被标记为损坏"""
+        return config_name in self._corrupted_configs
+
+    def get_corrupted_configs(self) -> Set[str]:
+        """获取所有损坏的配置名称列表"""
+        return self._corrupted_configs.copy()
+
+    def clear_corrupted_flag(self, config_name: str) -> bool:
+        """
+        手动清除配置的损坏标记（在手动修复文件后调用）
+        
+        注意：这不会重新加载配置，只是允许后续的保存操作
+        建议在调用此方法后立即调用 reload_all() 重新加载配置
+        """
+        if config_name in self._corrupted_configs:
+            self._corrupted_configs.discard(config_name)
+            logger.info(f"✅ 已清除配置 '{config_name}' 的损坏标记")
+            return True
+        return False
+
 
     # ==================== 便捷属性 ====================
 
