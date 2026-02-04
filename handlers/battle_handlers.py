@@ -598,6 +598,28 @@ class BattleHandlers:
 
         self.clear_active_battle(umo, user_id)
 
+        # 捕捉成功
+        if turn_result.winner == "catch":
+            caught_monster = turn_result.caught_monster
+            if caught_monster:
+                # 将捕获的精灵添加到玩家背包
+                await self.pm.add_monster_from_dict(user_id, caught_monster)
+                
+                # 获取精灵显示名称
+                monster_name = caught_monster.get("nickname") or caught_monster.get("name", "???")
+                rarity = caught_monster.get("rarity", 1)
+                rarity_stars = "⭐" * rarity
+                
+                await self._recall_battle_message(event, user_id)
+                yield event.plain_result(
+                    f"{turn_messages}\n\n"
+                    f"🎉 捕捉成功！\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"✨ {monster_name} {rarity_stars} 成为了你的伙伴！\n"
+                    f"💡 发送 /背包 查看你的精灵"
+                )
+            return
+
         if turn_result.winner == "player":
             # 胜利
             # 应用经验和金币倍率（包括玩家buff）
@@ -1069,7 +1091,29 @@ class BattleHandlers:
         self.clear_active_battle(umo, user_id)
         prefix = self.plugin.game_action_prefix
         from_explore = state_data.get("from_explore", False)
-        
+
+        # 捕捉成功
+        if turn_result.winner == "catch":
+            caught_monster = turn_result.caught_monster
+            if caught_monster:
+                # 将捕获的精灵添加到玩家背包
+                await self.pm.add_monster_from_dict(user_id, caught_monster)
+                
+                # 获取精灵显示名称
+                monster_name = caught_monster.get("nickname") or caught_monster.get("name", "???")
+                rarity = caught_monster.get("rarity", 1)
+                rarity_stars = "⭐" * rarity
+                
+                await self._recall_battle_message(event, user_id)
+                yield event.plain_result(
+                    f"{turn_messages}\n\n"
+                    f"🎉 捕捉成功！\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"✨ {monster_name} {rarity_stars} 成为了你的伙伴！\n"
+                    f"💡 发送 /背包 查看你的精灵"
+                )
+            return
+
         if turn_result.winner == "player":
             # 胜利
             exp_buff = await self.pm.get_buff_multiplier(user_id, "exp_rate")

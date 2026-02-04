@@ -74,8 +74,10 @@ class TurnResult:
     messages: List[str] = field(default_factory=list)  # 战斗消息
     player_monster_fainted: bool = False
     enemy_monster_fainted: bool = False
+    caught_monster: Dict = field(default_factory=dict)  # 捕获的精灵数据
     battle_ended: bool = False
-    winner: str = ""  # "player" / "enemy" / "flee" / ""
+    winner: str = ""  # "player" / "enemy" / "flee" / "catch" / ""
+
 
 
 @dataclass
@@ -358,8 +360,10 @@ class BattleSystem:
             result.messages.append(catch_result["message"])
             if catch_result["success"]:
                 result.battle_ended = True
-                result.winner = "player"
+                result.winner = "catch"  # 使用 "catch" 标识捕捉成功
+                result.caught_monster = catch_result.get("caught_monster", {})  # 传递捕获的精灵数据
                 battle.is_active = False
+
             return result
 
         # 3. 生成敌方行动
