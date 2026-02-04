@@ -622,7 +622,7 @@ class WorldManager:
 
             # 随机道具
             if random.random() < 0.5:
-                common_items = ["potion", "pokeball", "antidote"]
+                common_items = ["治疗药水", "精灵球", "解毒剂"]
                 items.append({
                     "item_id": random.choice(common_items),
                     "amount": random.randint(1, 3)
