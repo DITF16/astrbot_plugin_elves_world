@@ -138,10 +138,17 @@ class Database:
         # 初始化数据库结构
         self._init_tables()
     
-    def __del__(self):
-        """析构时关闭所有连接"""
+    def close(self):
+        """显式关闭数据库连接池（推荐在插件卸载时调用）"""
         if hasattr(self, '_pool'):
             self._pool.close_all()
+            logger.info("📦 数据库连接池已关闭")
+    
+    def __del__(self):
+        """析构时关闭所有连接（作为后备，不应依赖此方法）"""
+        if hasattr(self, '_pool'):
+            self._pool.close_all()
+
 
     @contextmanager
     def _get_connection(self):

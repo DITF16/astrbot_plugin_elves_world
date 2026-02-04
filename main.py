@@ -377,5 +377,10 @@ class MonsterGamePlugin(Star):
         # 停止Web服务器
         if hasattr(self, 'web_server'):
             self.web_server.stop()
+        
+        # 显式关闭数据库连接池
+        if hasattr(self, 'db'):
+            self.db.close()
 
         logger.info("🎮 精灵对战游戏插件已卸载")
+
