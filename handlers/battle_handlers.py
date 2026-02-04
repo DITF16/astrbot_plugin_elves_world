@@ -388,9 +388,84 @@ class BattleHandlers:
             if msg in ["逃跑", "逃", "跑", "run", "flee", "逃走"]:
                 action = BattleAction(action_type=ActionType.FLEE, actor_id="")
 
-            # 捕捉
-            elif msg in ["捕捉", "捕", "抓", "catch", "捕获"]:
-                action = BattleAction(action_type=ActionType.CATCH, actor_id="")
+            # 捕捉（支持：捕捉、捕捉 精灵球名）
+            elif msg.startswith("捕捉") or msg.startswith("捕 ") or msg.startswith("抓") or msg in ["捕捉", "捕", "抓", "catch", "捕获"]:
+                parts = msg.split(maxsplit=1)
+                
+                # 获取玩家背包中的精灵球
+                inventory = player.get("inventory", {})
+                items_config = self.config.items
+                pokeballs = {}
+                for item_id, count in inventory.items():
+                    if count > 0 and item_id in items_config:
+                        item_data = items_config[item_id]
+                        if item_data.get("type") == "capture":  # 精灵球类型
+                            pokeballs[item_id] = {
+                                "name": item_data.get("name", item_id),
+                                "count": count,
+                                "capture_rate": item_data.get("effect", {}).get("capture_rate", 1.0)
+                            }
+                
+                if not pokeballs:
+                    await ev.send(ev.plain_result("❌ 你没有精灵球！请先去商店购买。"))
+                    controller.keep(timeout=180, reset_timeout=True)
+                    return
+                
+                selected_ball_id = None
+                
+                if len(parts) >= 2:
+                    # 玩家指定了精灵球名称
+                    ball_name = parts[1].strip()
+                    for ball_id, ball_info in pokeballs.items():
+                        if ball_info["name"] == ball_name or ball_id == ball_name:
+                            selected_ball_id = ball_id
+                            break
+                    
+                    if not selected_ball_id:
+                        await ev.send(ev.plain_result(f"❌ 你没有「{ball_name}」或该物品不是精灵球。"))
+                        controller.keep(timeout=180, reset_timeout=True)
+                        return
+                else:
+                    # 显示可用精灵球列表
+                    # 获取野生精灵的稀有度和血量
+                    wild_monster = battle.enemy_team[0] if battle.enemy_team else None
+                    wild_rarity = wild_monster.get("rarity", 1) if wild_monster else 1
+                    catch_config = self.config.catch_config or {}
+                    base_rate = catch_config.get("rarity_catch_rates", {}).get(str(wild_rarity), 0.5)
+                    
+                    # 计算血量修正
+                    hp_config = catch_config.get("hp_modifier", {"min_multiplier": 0.0, "max_multiplier": 1.0})
+                    current_hp = wild_monster.get("current_hp", wild_monster.get("hp", 100)) if wild_monster else 100
+                    max_hp = wild_monster.get("stats", {}).get("hp", wild_monster.get("hp", 100)) if wild_monster else 100
+                    hp_percent = max(0.01, current_hp / max_hp) if max_hp > 0 else 1.0
+                    hp_min = hp_config.get("min_multiplier", 0.0)
+                    hp_max = hp_config.get("max_multiplier", 1.0)
+                    hp_modifier = hp_max - (hp_max - hp_min) * hp_percent
+                    
+                    wild_name = wild_monster.get("nickname") or wild_monster.get("name", "???") if wild_monster else "???"
+                    rarity_stars = "⭐" * wild_rarity
+                    
+                    lines = ["🎯 请选择要使用的精灵球：", ""]
+                    lines.append(f"🎯 目标: {wild_name} {rarity_stars}")
+                    lines.append(f"❤️ 血量: {current_hp}/{max_hp} ({hp_percent*100:.0f}%) → 修正×{hp_modifier:.2f}")
+                    lines.append("")
+                    
+                    for ball_id, ball_info in pokeballs.items():
+                        ball_rate = ball_info["capture_rate"]
+                        # 最终捕捉率 = 基础率 × 血量修正 × 精灵球倍率
+                        final_rate = min(base_rate * hp_modifier * ball_rate, 0.95) * 100
+                        lines.append(f"• {ball_info['name']} ×{ball_info['count']} (成功率≈{final_rate:.0f}%)")
+                    lines.append("")
+                    lines.append("💡 输入「捕捉 精灵球名」使用，如: 捕捉 高级精灵球")
+                    lines.append("💡 先削弱目标血量可提高捕捉率！")
+                    await ev.send(ev.plain_result("\n".join(lines)))
+                    controller.keep(timeout=180, reset_timeout=True)
+                    return
+                
+
+                
+                # 创建带有精灵球信息的捕捉行动
+                action = BattleAction(action_type=ActionType.CATCH, actor_id="", ball_id=selected_ball_id)
 
             # 换精灵（输入"换 2"或"switch 2"）
             elif msg.startswith("换") or msg.lower().startswith("switch"):
@@ -774,12 +849,109 @@ class BattleHandlers:
                 item_id=item["id"]
             )
         
-        # 捕捉
-        elif action in ["捕捉", "捕", "抓", "catch", "捕获"]:
-
-            battle_action = BattleAction(action_type=ActionType.CATCH, actor_id="")
-        
-        # 换精灵
+        # 捕捉 - 支持指定精灵球: "捕捉 高级精灵球" 或直接 "捕捉" 显示可用精灵球
+        elif action.startswith(("捕捉", "捕", "抓", "catch", "捕获")):
+            # 检查是否可以捕捉
+            if not battle.can_catch:
+                yield event.plain_result("❌ 这场战斗无法捕捉精灵！")
+                return
+            
+            # 获取玩家背包中的精灵球
+            inventory = await self.pm.get_inventory(user_id)
+            items_config = self.config.items
+            
+            # 筛选出精灵球类型的物品
+            available_balls = []
+            for item_id, count in inventory.items():
+                if count > 0:
+                    item_config = items_config.get(item_id, {})
+                    if item_config.get("type") == "capture":
+                        capture_rate = item_config.get("effect", {}).get("capture_rate", 1.0)
+                        available_balls.append({
+                            "id": item_id,
+                            "name": item_config.get("name", item_id),
+                            "count": count,
+                            "capture_rate": capture_rate
+                        })
+            
+            # 按捕捉率排序（从低到高，方便玩家选择）
+            available_balls.sort(key=lambda x: x["capture_rate"])
+            
+            if not available_balls:
+                yield event.plain_result("❌ 你没有任何精灵球！请先去商店购买。")
+                return
+            
+            # 解析指令，检查是否指定了精灵球
+            parts = action.split(maxsplit=1)
+            selected_ball = None
+            
+            if len(parts) >= 2:
+                # 玩家指定了精灵球名称
+                ball_name = parts[1].strip()
+                for ball in available_balls:
+                    if ball["name"] == ball_name or ball["id"] == ball_name:
+                        selected_ball = ball
+                        break
+                
+                if not selected_ball:
+                    yield event.plain_result(f"❌ 你没有 {ball_name}，或它不是精灵球！")
+                    return
+            else:
+                # 没有指定精灵球，显示可用列表（含血量信息）
+                enemy_monster = battle.enemy_monster
+                enemy_name = enemy_monster.get("nickname") or enemy_monster.get("name", "???") if enemy_monster else "???"
+                enemy_rarity = enemy_monster.get("rarity", 3) if enemy_monster else 3
+                rarity_stars = "⭐" * enemy_rarity
+                
+                # 获取血量信息
+                current_hp = enemy_monster.get("current_hp", 1) if enemy_monster else 1
+                max_hp = enemy_monster.get("stats", {}).get("hp", 1) if enemy_monster else 1
+                hp_percent = current_hp / max_hp if max_hp > 0 else 1.0
+                hp_bar = "█" * int(hp_percent * 10) + "░" * (10 - int(hp_percent * 10))
+                
+                # 获取稀有度基础捕捉率
+                catch_config = self.config.catch_config
+                rarity_rates = catch_config.get("rarity_catch_rates", {})
+                base_rate = rarity_rates.get(str(enemy_rarity), 0.5)
+                
+                # 计算血量修正
+                hp_config = catch_config.get("hp_modifier", {})
+                hp_min = hp_config.get("min_multiplier", 0.0)  # 满血时的修正
+                hp_max = hp_config.get("max_multiplier", 1.0)  # 空血时的修正
+                hp_modifier = hp_max - (hp_max - hp_min) * hp_percent
+                
+                lines = [
+                    f"🎯 捕捉目标: {enemy_name} {rarity_stars}",
+                    f"❤️ 血量: [{hp_bar}] {current_hp}/{max_hp} ({hp_percent*100:.0f}%)",
+                    f"📊 基础捕捉率: {base_rate*100:.0f}% | 血量加成: ×{hp_modifier:.2f}",
+                    "━━━━━━━━━━━━━━━━━━",
+                    "📦 可用精灵球："
+                ]
+                
+                for ball in available_balls:
+                    ball_rate = ball['capture_rate']
+                    if ball_rate >= 255:
+                        est_rate = 100.0
+                        rate_desc = "必定成功"
+                    else:
+                        # 预估成功率 = 基础率 × 血量修正 × 精灵球倍率
+                        est_rate = min(95, max(5, base_rate * hp_modifier * ball_rate * 100))
+                        rate_desc = f"≈{est_rate:.0f}%"
+                    lines.append(f"  • {ball['name']} ×{ball['count']} ({rate_desc})")
+                
+                lines.append("━━━━━━━━━━━━━━━━━━")
+                lines.append(f"💡 使用方法: {prefix}捕捉 精灵球名称")
+                lines.append(f"   例如: {prefix}捕捉 高级精灵球")
+                
+                yield event.plain_result("\n".join(lines))
+                return
+            
+            # 构建捕捉行动
+            battle_action = BattleAction(
+                action_type=ActionType.CATCH, 
+                actor_id="",
+                ball_id=selected_ball["id"]
+            )
         elif action.startswith("换") or action.lower().startswith("switch"):
             parts = action.split()
             if len(parts) >= 2:

@@ -32,6 +32,7 @@ class ConfigManager:
         "regions": "regions.json",
         "bosses": "bosses.json",
         "items": "items.json",
+        "catch_config": "catch_config.json",
     }
 
     def __init__(self, data_path: Path, default_data_path: Path):
@@ -254,4 +255,9 @@ class ConfigManager:
     def items(self) -> Dict:
         """获取道具配置"""
         return self.get("items")
+
+    @property
+    def catch_config(self) -> Dict:
+        """获取捕捉系统配置"""
+        return self.get("catch_config")
 

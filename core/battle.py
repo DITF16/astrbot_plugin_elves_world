@@ -45,6 +45,7 @@ class BattleAction:
     skill_id: str = ""      # 技能ID（如果是技能行动）
     item_id: str = ""       # 道具ID（如果是道具行动）
     switch_to_id: str = ""  # 换上的精灵ID（如果是换精灵）
+    ball_id: str = ""        # 精灵球ID（如果是捕捉行动）
     priority: int = 0       # 优先级（先制技能等）
 
 
@@ -353,7 +354,7 @@ class BattleSystem:
 
         # 2. 检查捕捉
         if player_action.action_type == ActionType.CATCH:
-            catch_result = await self._process_catch(battle)
+            catch_result = await self._process_catch(battle, player_action)
             result.messages.append(catch_result["message"])
             if catch_result["success"]:
                 result.battle_ended = True
@@ -943,48 +944,116 @@ class BattleSystem:
         else:
             return {"success": False, "message": "逃跑失败！"}
 
-    async def _process_catch(self, battle: BattleState) -> Dict:
-        """处理捕捉"""
+    async def _process_catch(self, battle: BattleState, action: BattleAction) -> Dict:
+        """
+        处理捕捉行动
+        
+        捕捉公式: 最终捕捉率 = 稀有度基础捕捉率 × 精灵球加成 × HP修正 × 状态修正 × buff加成
+        
+        Args:
+            battle: 战斗状态
+            action: 包含 ball_id 的捕捉行动
+            
+        Returns:
+            捕捉结果字典
+        """
         if not battle.can_catch:
-            return {"success": False, "message": "无法捕捉这只精灵！"}
+            return {"success": False, "message": "❌ 无法捕捉这只精灵！"}
 
         enemy_monster = battle.enemy_monster
         if not enemy_monster:
-            return {"success": False, "message": "没有目标！"}
+            return {"success": False, "message": "❌ 没有目标！"}
 
-        monster_template = self.config.get_item("monsters", enemy_monster.get("template_id", ""))
-        base_catch_rate = 45
-        if monster_template:
-            base_catch_rate = monster_template.get("catch_rate", 45)
+        ball_id = action.ball_id
+        if not ball_id:
+            return {"success": False, "message": "❌ 请选择要使用的精灵球！"}
 
-        catch_chance = GameFormulas.calculate_catch_rate(
-            base_catch_rate=base_catch_rate,
-            current_hp=enemy_monster.get("current_hp", 1),
-            max_hp=enemy_monster.get("max_hp", 1),
-            status=enemy_monster.get("status"),
-            ball_bonus=1.0
-        )
+        # 获取精灵球配置
+        ball_config = self.config.get_item("items", ball_id)
+        if not ball_config or ball_config.get("type") != "capture":
+            return {"success": False, "message": f"❌ {ball_id} 不是有效的精灵球！"}
 
-        # 应用玩家的捕捉率buff
+        # 消耗精灵球
+        if self.player_manager and battle.player_id:
+            has_ball = await self.player_manager.has_item(battle.player_id, ball_id, 1)
+            if not has_ball:
+                return {"success": False, "message": f"❌ 你没有 {ball_id}！"}
+            await self.player_manager.use_item(battle.player_id, ball_id, 1)
+
+        # 获取捕捉配置
+        catch_config = self.config.catch_config or {}
+        rarity_rates = catch_config.get("rarity_catch_rates", {})
+        ball_multipliers = catch_config.get("ball_multipliers", {})
+        rate_cap = catch_config.get("catch_rate_cap", {})
+        hp_config = catch_config.get("hp_modifier", {})
+        status_mods = catch_config.get("status_modifiers", {})
+
+        # 获取精灵稀有度
+        monster_rarity = enemy_monster.get("rarity", 3)
+        
+        # 1. 基础捕捉率（根据稀有度，直接使用0-1的概率）
+        base_catch_rate = rarity_rates.get(str(monster_rarity), 0.5)
+        
+        # 2. 血量修正（HP越低，修正越高；满血时为0，无法捕捉）
+        # 公式: hp_modifier = max - (max - min) × hp_percent
+        # 满血(100%): 1.0 - 1.0×1.0 = 0.0 (无法捕捉) | 残血(10%): 1.0 - 1.0×0.1 = 0.9
+        hp_config = catch_config.get("hp_modifier", {"min_multiplier": 0.0, "max_multiplier": 1.0})
+        hp_min = hp_config.get("min_multiplier", 0.0)  # 满血时的修正（默认0，无法捕捉）
+        hp_max = hp_config.get("max_multiplier", 1.0)  # 空血时的修正（默认1，正常捕捉率）
+        
+        current_hp = enemy_monster.get("current_hp", enemy_monster.get("hp", 100))
+        max_hp = enemy_monster.get("stats", {}).get("hp", enemy_monster.get("hp", 100))
+        hp_percent = max(0.01, current_hp / max_hp) if max_hp > 0 else 1.0  # 至少1%，避免除零
+        hp_modifier = hp_max - (hp_max - hp_min) * hp_percent
+        
+        # 3. 精灵球加成（优先使用catch_config中的配置，否则使用items中的配置）
+        ball_bonus = ball_multipliers.get(ball_id, ball_config.get("effect", {}).get("capture_rate", 1.0))
+        
+        # 4. 计算最终捕捉率 = 基础捕捉率 × 血量修正 × 精灵球倍率
+        catch_chance = base_catch_rate * hp_modifier * ball_bonus
+
+        # 5. 应用玩家的捕捉率buff（如幸运符等）
         buff_multiplier = 1.0
         buff_msg = ""
         if self.player_manager and battle.player_id:
             buff_multiplier = await self.player_manager.get_buff_multiplier(battle.player_id, "catch_rate")
             if buff_multiplier > 1.0:
-                buff_msg = f" (🎯捕捉率+{int((buff_multiplier-1)*100)}%)"
+                buff_msg = f" (🍀+{int((buff_multiplier-1)*100)}%)"
         
-        catch_chance = min(0.95, catch_chance * buff_multiplier)  # 最高95%
+        catch_chance = catch_chance * buff_multiplier
+
+        # 6. 应用上下限
+
+        min_rate = rate_cap.get("min", 0.05)
+        max_rate = rate_cap.get("max", 0.95)
+        catch_chance = max(min_rate, min(max_rate, catch_chance))
 
         enemy_name = enemy_monster.get("nickname") or enemy_monster.get("name", "???")
+        rarity_stars = "⭐" * monster_rarity
+        
+        # 构建捕捉信息（显示各项参数）
+        ball_name = ball_config.get("name", ball_id)
+        hp_display = f"{current_hp}/{max_hp} ({hp_percent*100:.0f}%)"
+        catch_info = f"🎯 使用了 {ball_name}！\n"
+        catch_info += f"❤️ 目标血量: {hp_display} (修正×{hp_modifier:.2f})\n"
+        catch_info += f"📊 捕捉率: {catch_chance*100:.1f}%{buff_msg}\n"
+
 
         if random.random() < catch_chance:
             return {
                 "success": True,
-                "message": f"捕捉成功！{enemy_name} 成为了你的伙伴！{buff_msg}",
-                "caught_monster": enemy_monster
+                "message": f"{catch_info}✨ 捕捉成功！{enemy_name} {rarity_stars} 成为了你的伙伴！",
+                "caught_monster": enemy_monster,
+                "ball_used": ball_id,
+                "catch_rate": catch_chance
             }
         else:
-            return {"success": False, "message": f"捕捉失败！{enemy_name} 挣脱了！{buff_msg}"}
+            return {
+                "success": False, 
+                "message": f"{catch_info}💨 捕捉失败！{enemy_name} 挣脱了！",
+                "ball_used": ball_id,
+                "catch_rate": catch_chance
+            }
 
     def _generate_enemy_action(self, battle: BattleState) -> BattleAction:
         """生成敌方AI行动"""

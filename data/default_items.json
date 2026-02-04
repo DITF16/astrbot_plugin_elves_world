@@ -36,7 +36,7 @@
   "大师球": {
     "id": "大师球",
     "name": "大师球",
-    "description": "传说中的精灵球，必定捕捉成功",
+    "description": "传说中的精灵球，拥有极高的捕捉成功率(×3.0倍率)",
     "type": "capture",
     "category": "ball",
     "rarity": 5,
@@ -47,7 +47,7 @@
     "shop_available": true,
     "max_stack": 10,
     "effect": {
-      "capture_rate": 999
+      "capture_rate": 3.0
     }
   },
   "治疗药水": {
