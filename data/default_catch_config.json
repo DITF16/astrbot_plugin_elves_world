@@ -1,0 +1,22 @@
+{
+    "rarity_catch_rates": {
+        "1": 0.90,
+        "2": 0.70,
+        "3": 0.50,
+        "4": 0.30,
+        "5": 0.15
+    },
+    "hp_modifier": {
+        "min_multiplier": 0.0,
+        "max_multiplier": 1.0,
+        "description": "满血时倍率为0(无法捕捉)，血量越低倍率越接近1(正常捕捉率)"
+    },
+    "ball_multipliers": {
+        "精灵球": 1.0,
+        "高级精灵球": 1.5,
+        "超级球": 2.0,
+        "大师球": 3.0
+    },
+    "min_catch_rate": 0.01,
+    "max_catch_rate": 0.95
+}
