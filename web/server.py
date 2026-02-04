@@ -589,11 +589,11 @@ class WebServer:
             if not self._check_auth(request):
                 raise HTTPException(status_code=401, detail="未授权")
 
-            player = self.pm.get_player(user_id)
+            player = await self.pm.get_player(user_id)
             if not player:
                 raise HTTPException(status_code=404, detail="玩家不存在")
 
-            monsters = self.pm.get_monsters(user_id)
+            monsters = await self.pm.get_monsters(user_id)
 
             return JSONResponse({
                 "success": True,
