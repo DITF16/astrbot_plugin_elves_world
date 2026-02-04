@@ -325,7 +325,7 @@ class WorldManager:
         player_level = player.get("level", 1)
 
         for region_id, region in self.config.regions.items():
-            unlock = region.get("unlock_condition")
+            unlock = region.get("unlock_requires")  # 与 default_regions.json 字段名保持一致
 
             # 无条件解锁
             if not unlock:

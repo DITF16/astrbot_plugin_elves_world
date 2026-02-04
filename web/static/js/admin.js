@@ -991,6 +991,42 @@ function renderSkillEffects(effects) {
 
 // ==================== 区域管理 ====================
 
+// ==================== 解锁条件配置 ====================
+
+// 缓存BOSS列表
+let cachedBossList = [];
+
+// 加载BOSS列表（用于解锁条件选择）
+async function loadBossListForUnlock() {
+    if (cachedBossList.length > 0) {
+        return cachedBossList;
+    }
+    try {
+        const result = await api('/bosses');
+        if (result.success) {
+            cachedBossList = result.data || [];
+        }
+    } catch (error) {
+        console.error('加载BOSS列表失败:', error);
+    }
+    return cachedBossList;
+}
+
+// 将解锁条件对象转换为可读字符串（用于表格显示）
+function formatUnlockRequiresDisplay(unlockRequires) {
+    if (!unlockRequires) {
+        return '<span class="unlock-badge none"><i>🔓</i> 无限制</span>';
+    }
+    
+    if (unlockRequires.type === 'boss') {
+        return `<span class="unlock-badge boss"><i>👹</i> 击败: ${unlockRequires.id}</span>`;
+    } else if (unlockRequires.type === 'level') {
+        return `<span class="unlock-badge level"><i>📊</i> 等级 ≥ ${unlockRequires.value}</span>`;
+    }
+    return '<span class="unlock-badge none"><i>🔓</i> 无限制</span>';
+}
+
+
 // 将解锁条件对象转换为可读字符串
 function formatUnlockRequires(unlockRequires) {
     if (!unlockRequires) return '';
@@ -1020,6 +1056,135 @@ function parseUnlockRequires(str) {
     }
     return null;
 }
+
+// 生成解锁条件选择器HTML
+function generateUnlockRequiresSelector() {
+    return `
+        <div class="unlock-requires-container">
+            <div class="form-group">
+                <label>解锁条件类型</label>
+                <select id="unlock-type" name="unlock_type" onchange="onUnlockTypeChange()">
+                    <option value="none">🔓 无条件（默认解锁）</option>
+                    <option value="level">📊 等级要求</option>
+                    <option value="boss">👹 击败BOSS</option>
+                </select>
+            </div>
+            <div id="unlock-value-container" style="display: none;">
+                <!-- 动态内容：等级输入框 或 BOSS选择下拉框 -->
+            </div>
+        </div>
+    `;
+}
+
+// 解锁条件类型变化时的处理函数
+async function onUnlockTypeChange() {
+    const typeSelect = document.getElementById('unlock-type');
+    const valueContainer = document.getElementById('unlock-value-container');
+    const type = typeSelect.value;
+    
+    if (type === 'none') {
+        valueContainer.style.display = 'none';
+        valueContainer.innerHTML = '';
+    } else if (type === 'level') {
+        valueContainer.style.display = 'block';
+        valueContainer.innerHTML = `
+            <div class="form-group">
+                <label>所需等级</label>
+                <input type="number" id="unlock-level-value" name="unlock_level_value" 
+                       min="1" max="100" value="5" placeholder="输入所需玩家等级">
+                <div class="hint">玩家等级达到此值后可解锁该区域</div>
+            </div>
+        `;
+    } else if (type === 'boss') {
+        valueContainer.style.display = 'block';
+        valueContainer.innerHTML = `
+            <div class="form-group">
+                <label>需要击败的BOSS</label>
+                <select id="unlock-boss-value" name="unlock_boss_value">
+                    <option value="">加载中...</option>
+                </select>
+                <div class="hint">玩家击败此BOSS后可解锁该区域</div>
+            </div>
+        `;
+        // 异步加载BOSS列表
+        await populateBossSelect();
+    }
+}
+
+// 填充BOSS下拉列表
+async function populateBossSelect() {
+    const bossSelect = document.getElementById('unlock-boss-value');
+    if (!bossSelect) return;
+    
+    const bossList = await loadBossListForUnlock();
+    
+    if (bossList.length === 0) {
+        bossSelect.innerHTML = '<option value="">暂无可选BOSS</option>';
+        return;
+    }
+    
+    bossSelect.innerHTML = bossList.map(boss => 
+        `<option value="${boss.id || boss.name}">
+            ${boss.name} (Lv.${boss.level || '?'})
+        </option>`
+    ).join('');
+}
+
+// 从表单获取解锁条件对象
+function getUnlockRequiresFromForm() {
+    const type = document.getElementById('unlock-type')?.value;
+    
+    if (!type || type === 'none') {
+        return null;
+    }
+    
+    if (type === 'level') {
+        const value = parseInt(document.getElementById('unlock-level-value')?.value) || 1;
+        return { type: 'level', value: value };
+    }
+    
+    if (type === 'boss') {
+        const bossId = document.getElementById('unlock-boss-value')?.value;
+        if (bossId) {
+            return { type: 'boss', id: bossId };
+        }
+    }
+    
+    return null;
+}
+
+// 设置解锁条件选择器的值（用于编辑时回填）
+async function setUnlockRequiresValue(unlockRequires) {
+    const typeSelect = document.getElementById('unlock-type');
+    if (!typeSelect) return;
+    
+    if (!unlockRequires) {
+        typeSelect.value = 'none';
+        await onUnlockTypeChange();
+        return;
+    }
+    
+    if (unlockRequires.type === 'level') {
+        typeSelect.value = 'level';
+        await onUnlockTypeChange();
+        const levelInput = document.getElementById('unlock-level-value');
+        if (levelInput) {
+            levelInput.value = unlockRequires.value || 1;
+        }
+    } else if (unlockRequires.type === 'boss') {
+        typeSelect.value = 'boss';
+        await onUnlockTypeChange();
+        // 等待BOSS列表加载完成后设置值
+        setTimeout(() => {
+            const bossSelect = document.getElementById('unlock-boss-value');
+            if (bossSelect && unlockRequires.id) {
+                bossSelect.value = unlockRequires.id;
+            }
+        }, 100);
+    }
+}
+
+
 
 
 
@@ -1056,7 +1221,7 @@ function renderRegionsTable(regions) {
             <td>Lv.${r.level_range?.[0] || 1} - ${r.level_range?.[1] || 10}</td>
             <td>⚡${r.stamina_cost || 10}</td>
             <td>${(r.wild_monsters || []).length}种</td>
-            <td>${formatUnlockRequires(r.unlock_requires) || '-'}</td>
+            <td>${formatUnlockRequiresDisplay(r.unlock_requires)}</td>
             <td class="table-actions">
                 <button class="btn btn-secondary btn-small" onclick="editRegion('${r.id}')">编辑</button>
                 <button class="btn btn-danger btn-small" onclick="deleteRegion('${r.id}')">删除</button>
@@ -1103,11 +1268,10 @@ function showRegionModal(regionId = null) {
                         <option value="huge">巨大 (8x8)</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>解锁条件</label>
-                    <input type="text" name="unlock_requires" placeholder="可选，如 boss:forest_boss">
-                </div>
             </div>
+            
+            <!-- 解锁条件选择器 -->
+            ${generateUnlockRequiresSelector()}
             
             <div class="form-group">
                 <label>野生精灵 (每行一个: 精灵名:权重)</label>
@@ -1143,7 +1307,8 @@ async function loadRegionData(regionId) {
                 form.querySelector('[name="level_max"]').value = region.level_range?.[1] || 10;
                 form.querySelector('[name="stamina_cost"]').value = region.stamina_cost || 10;
                 form.querySelector('[name="map_size"]').value = region.map_size || 'medium';
-                form.querySelector('[name="unlock_requires"]').value = formatUnlockRequires(region.unlock_requires);
+                // 设置解锁条件选择器的值
+                await setUnlockRequiresValue(region.unlock_requires);
                 const wildMonsters = (region.wild_monsters || [])
                     .map(m => `${m.monster_id || m.id || m.name}:${m.weight || 10}`)
                     .join('\n');
@@ -1181,7 +1346,7 @@ async function saveRegion(isEdit) {
         ],
         stamina_cost: parseInt(formData.get('stamina_cost')) || 10,
         map_size: formData.get('map_size'),
-        unlock_requires: parseUnlockRequires(formData.get('unlock_requires')),
+        unlock_requires: getUnlockRequiresFromForm(),  // 使用新的选择器获取解锁条件
         wild_monsters: wildMonsters,
         description: formData.get('description')
     };
@@ -2556,6 +2721,7 @@ window.removeSkillEffect = removeSkillEffect;
 window.onEffectTypeChange = onEffectTypeChange;
 
 window.showRegionModal = showRegionModal;
+window.onUnlockTypeChange = onUnlockTypeChange;
 window.editRegion = editRegion;
 window.deleteRegion = deleteRegion;
 

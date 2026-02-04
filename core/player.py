@@ -418,20 +418,23 @@ class PlayerManager:
         if not player:
             return (False, "玩家不存在")
 
-        unlock_condition = region.get("unlock_condition")
+        unlock_condition = region.get("unlock_requires")  # 与 default_regions.json 字段名保持一致
         if not unlock_condition:
             return (True, "")
 
         condition_type = unlock_condition.get("type")
-        condition_value = unlock_condition.get("value")
 
         if condition_type == "level":
+            # 等级解锁条件：{"type": "level", "value": 10}
+            condition_value = unlock_condition.get("value")
             if player["level"] < condition_value:
                 return (False, f"需要等级 {condition_value}")
-        elif condition_type == "boss_clear":
-            if not await self.db.async_is_boss_first_cleared(user_id, condition_value):
-                boss_config = self.config.get_item("bosses", condition_value)
-                boss_name = boss_config.get("name", condition_value) if boss_config else condition_value
+        elif condition_type == "boss":
+            # BOSS解锁条件：{"type": "boss", "id": "森林守护者"}
+            boss_id = unlock_condition.get("id")
+            if not await self.db.async_is_boss_first_cleared(user_id, boss_id):
+                boss_config = self.config.get_item("bosses", boss_id)
+                boss_name = boss_config.get("name", boss_id) if boss_config else boss_id
                 return (False, f"需要先击败 {boss_name}")
 
         return (True, "")

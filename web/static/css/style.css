@@ -802,8 +802,99 @@ body {
     .form-row-3 {
         grid-template-columns: 1fr;
     }
-
 }
+
+/* ==================== 解锁条件选择器 ==================== */
+.unlock-condition-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.unlock-condition-selector .condition-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.unlock-condition-selector .condition-row label {
+    min-width: 80px;
+    margin-bottom: 0;
+    font-weight: 500;
+    color: #334155;
+}
+
+.unlock-condition-selector select,
+.unlock-condition-selector input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #334155;
+    font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.unlock-condition-selector select:focus,
+.unlock-condition-selector input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.unlock-condition-selector .condition-value-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 8px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.unlock-condition-selector .condition-value-container.hidden {
+    display: none;
+}
+
+.unlock-condition-selector .hint {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 4px;
+}
+
+/* 解锁条件标签样式 */
+.unlock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.unlock-badge.unlock-none {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+}
+
+.unlock-badge.unlock-level {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.unlock-badge.unlock-boss {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.unlock-badge .badge-icon {
+    font-size: 14px;
+}
+
 
 /* ==================== 技能效果卡片 ==================== */
 .effect-item {
@@ -871,9 +962,104 @@ body {
     border: 2px dashed var(--border-color);
     border-radius: var(--radius);
 }
-        grid-template-columns: 1fr;
-    }
+
+/* ==================== 解锁条件选择器样式 ==================== */
+.unlock-requires-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
+
+.unlock-type-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.unlock-type-row label {
+    min-width: 80px;
+    margin-bottom: 0 !important;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.unlock-type-row select {
+    flex: 1;
+    max-width: 200px;
+}
+
+.unlock-value-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+}
+
+.unlock-value-row.hidden {
+    display: none;
+}
+
+.unlock-value-row label {
+    min-width: 80px;
+    margin-bottom: 0 !important;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.unlock-value-row select,
+.unlock-value-row input {
+    flex: 1;
+}
+
+.unlock-value-row input[type="number"] {
+    max-width: 120px;
+}
+
+/* BOSS选择下拉框特殊样式 */
+#unlock-boss-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+}
+
+#unlock-boss-select option {
+    padding: 8px 12px;
+}
+
+/* 解锁条件显示标签样式 */
+.unlock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.unlock-badge.none {
+    background: #e2e8f0;
+    color: #64748b;
+}
+
+.unlock-badge.level {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1d4ed8;
+}
+
+.unlock-badge.boss {
+    background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+    color: #be185d;
+}
+
+.unlock-badge i {
+    font-size: 10px;
+}
+
 
 @media (max-width: 768px) {
     .sidebar {
