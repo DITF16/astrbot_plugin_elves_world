@@ -3,11 +3,13 @@
 - 使用SQLite存储玩家数据
 - 支持异步操作（通过 asyncio.to_thread 包装同步操作）
 - 自动建表和迁移
+- 线程本地连接池，避免频繁创建/关闭连接
 """
 
 import sqlite3
 import json
 import asyncio
+import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from contextlib import contextmanager
@@ -15,6 +17,92 @@ from threading import Lock
 from datetime import datetime
 from astrbot.api import logger
 
+
+class ConnectionPool:
+    """
+    线程本地连接池
+    
+    每个线程维护自己的数据库连接，避免：
+    1. 频繁创建/关闭连接的开销
+    2. 多线程共享连接的安全问题
+    
+    连接会在以下情况下自动关闭：
+    - 调用 close_all() 方法
+    - Database 实例被销毁时
+    """
+    
+    def __init__(self, db_path: Path, timeout: float = 30.0):
+        self.db_path = str(db_path)
+        self.timeout = timeout
+        self._local = threading.local()
+        self._connections: Dict[int, sqlite3.Connection] = {}
+        self._lock = Lock()
+    
+    def get_connection(self) -> sqlite3.Connection:
+        """获取当前线程的数据库连接（如果不存在则创建）"""
+        thread_id = threading.get_ident()
+        
+        # 检查当前线程是否已有连接
+        conn = getattr(self._local, 'connection', None)
+        
+        if conn is None:
+            # 创建新连接
+            conn = sqlite3.connect(self.db_path, timeout=self.timeout)
+            conn.row_factory = sqlite3.Row
+            # 启用 WAL 模式，提高并发性能
+            conn.execute("PRAGMA journal_mode=WAL")
+            # 启用外键约束
+            conn.execute("PRAGMA foreign_keys=ON")
+            
+            self._local.connection = conn
+            
+            # 记录连接以便后续清理
+            with self._lock:
+                self._connections[thread_id] = conn
+            
+            logger.debug(f"[ConnectionPool] 为线程 {thread_id} 创建新数据库连接")
+        
+        return conn
+    
+    def close_current(self):
+        """关闭当前线程的连接"""
+        thread_id = threading.get_ident()
+        conn = getattr(self._local, 'connection', None)
+        
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception as e:
+                logger.warning(f"[ConnectionPool] 关闭连接时出错: {e}")
+            
+            self._local.connection = None
+            
+            with self._lock:
+                self._connections.pop(thread_id, None)
+            
+            logger.debug(f"[ConnectionPool] 已关闭线程 {thread_id} 的数据库连接")
+    
+    def close_all(self):
+        """关闭所有线程的连接（用于程序退出时清理）"""
+        with self._lock:
+            for thread_id, conn in list(self._connections.items()):
+                try:
+                    conn.close()
+                    logger.debug(f"[ConnectionPool] 已关闭线程 {thread_id} 的数据库连接")
+                except Exception as e:
+                    logger.warning(f"[ConnectionPool] 关闭线程 {thread_id} 连接时出错: {e}")
+            
+            self._connections.clear()
+        
+        # 清理当前线程的本地存储
+        self._local.connection = None
+        logger.info(f"[ConnectionPool] 已关闭所有数据库连接")
+    
+    @property
+    def active_connections(self) -> int:
+        """返回当前活跃的连接数"""
+        with self._lock:
+            return len(self._connections)
 
 
 class Database:
@@ -26,6 +114,11 @@ class Database:
     - 玩家拥有的精灵
     - 玩家背包道具
     - 战斗记录/统计
+    
+    特性：
+    - 线程安全的连接池
+    - 自动事务管理
+    - WAL 模式提高并发性能
     """
 
     def __init__(self, db_path: Path):
@@ -38,23 +131,36 @@ class Database:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = Lock()
+        
+        # 初始化连接池
+        self._pool = ConnectionPool(self.db_path)
 
         # 初始化数据库结构
         self._init_tables()
+    
+    def __del__(self):
+        """析构时关闭所有连接"""
+        if hasattr(self, '_pool'):
+            self._pool.close_all()
 
     @contextmanager
     def _get_connection(self):
-        """获取数据库连接（上下文管理器）"""
-        conn = sqlite3.connect(str(self.db_path), timeout=30)
-        conn.row_factory = sqlite3.Row  # 返回字典形式
+        """
+        获取数据库连接（上下文管理器）
+        
+        使用连接池复用连接，避免频繁创建/关闭。
+        事务在成功时自动提交，异常时自动回滚。
+        """
+        conn = self._pool.get_connection()
         try:
             yield conn
             conn.commit()
         except Exception as e:
             conn.rollback()
             raise e
-        finally:
-            conn.close()
+        # 注意：不再关闭连接，由连接池管理生命周期
+
+
 
     def _init_tables(self):
         """初始化数据库表结构"""
