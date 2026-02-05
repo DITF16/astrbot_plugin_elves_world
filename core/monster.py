@@ -194,11 +194,15 @@ class MonsterInstance:
         增加经验值
 
         Returns:
-            {"leveled_up": bool, "levels_gained": int, "new_skills": list, "can_evolve": bool}
+            {"leveled_up": bool, "levels_gained": int, "old_level": int, "new_level": int, "new_skills": list, "can_evolve": bool}
         """
+        old_level = self.level  # 记录升级前的等级
+        
         result = {
             "leveled_up": False,
             "levels_gained": 0,
+            "old_level": old_level,
+            "new_level": old_level,
             "new_skills": [],
             "can_evolve": False
         }
@@ -228,6 +232,9 @@ class MonsterInstance:
             else:
                 break
 
+        # 更新 new_level 为升级后的等级
+        result["new_level"] = self.level
+
         if result["leveled_up"]:
             self.recalculate_stats(config_manager)
             if self.evolves_to and self.evolution_level:
@@ -235,6 +242,7 @@ class MonsterInstance:
                     result["can_evolve"] = True
 
         return result
+
 
     def add_evs(self, ev_gains: Dict[str, int], config_manager: "ConfigManager" = None):
         """增加努力值"""
