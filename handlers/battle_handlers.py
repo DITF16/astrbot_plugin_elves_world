@@ -619,9 +619,12 @@ class BattleHandlers:
                     f"✨ {monster_name} {rarity_stars} 成为了你的伙伴！\n"
                     f"💡 发送 /精灵 背包 查看你的精灵"
                 )
-            return
+            # 捕捉成功后，标记地图上的怪物已处理
+            exp_map = self.world_manager.get_active_map(user_id)
+            if exp_map:
+                self.world_manager.mark_monster_defeated(user_id)
 
-        if turn_result.winner == "player":
+        elif turn_result.winner == "player":
             # 胜利
             # 应用经验和金币倍率（包括玩家buff）
             exp_buff = await self.pm.get_buff_multiplier(user_id, "exp_rate")
@@ -1113,9 +1116,12 @@ class BattleHandlers:
                     f"✨ {monster_name} {rarity_stars} 成为了你的伙伴！\n"
                     f"💡 发送 /精灵 背包 查看你的精灵"
                 )
-            return
+            # 捕捉成功后，标记地图上的怪物已处理
+            exp_map = self.world_manager.get_active_map(user_id)
+            if exp_map:
+                self.world_manager.mark_monster_defeated(user_id)
 
-        if turn_result.winner == "player":
+        elif turn_result.winner == "player":
             # 胜利
             exp_buff = await self.pm.get_buff_multiplier(user_id, "exp_rate")
             coin_buff = await self.pm.get_buff_multiplier(user_id, "coin_rate")
